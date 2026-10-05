@@ -237,3 +237,4 @@ pytest
 
 * Swiss Ephemeris / pyswisseph: AGPL (or Astrodienst commercial licence).
 * Place data © GeoNames (geonames.org), CC BY 4.0. Fallback geocoding © OpenStreetMap contributors (ODbL).
+
