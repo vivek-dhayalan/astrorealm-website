@@ -66,6 +66,24 @@ The container uses the `basic` instance (1/4 vCPU, 1 GiB) with one uvicorn worke
 minutes; the first request after that takes a few seconds while it starts. Cloudflare passes the visitor's
 IP in `CF-Connecting-IP`, which the rate limiter uses.
 
+### CI/CD (GitHub Actions)
+
+`.github/workflows/ci.yml` runs the tests on every push and pull request. On a push to `main`, once the
+tests pass, it builds the place database (cached for the month) and runs `wrangler deploy`.
+
+One-time setup:
+
+1. Cloudflare dashboard → **My Profile → API Tokens → Create Token** → template **Edit Cloudflare Workers**,
+   limited to your account (and the `astrorealm.in` zone). If a deploy fails with a permission error about
+   containers or images, edit the token and add the Containers permission.
+2. GitHub repo → **Settings → Secrets and variables → Actions → New repository secret**:
+   `CLOUDFLARE_API_TOKEN` (the token) and `CLOUDFLARE_ACCOUNT_ID` (Cloudflare dashboard → Workers & Pages,
+   right-hand side).
+3. Once, from your machine: `npx wrangler secret put TURNSTILE_SECRET_KEY` (secrets stay in Cloudflare across
+   deploys; CI never sees them).
+4. Optional: GitHub → **Settings → Environments → production** → add yourself as a required reviewer so every
+   deploy waits for your approval.
+
 The same Dockerfile runs on any other host too:
 `docker build -t astrorealm . ; docker run -p 8000:8000 --env-file .env astrorealm`.
 

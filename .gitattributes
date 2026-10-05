@@ -1,0 +1,6 @@
+# Keep LF line endings in the repo and in working copies (Docker, shell, YAML and Python all prefer LF)
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.sqlite binary
+*.ico binary

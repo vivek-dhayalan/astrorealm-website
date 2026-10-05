@@ -1,0 +1,86 @@
+# AstroRealm CI/CD
+#  - every push and pull request: run the test suite (Python 3.11, Swiss Ephemeris)
+#  - push to main (after tests pass): build the place database and deploy to Cloudflare Containers
+#
+# Repository secrets needed for deploy (Settings → Secrets and variables → Actions):
+#   CLOUDFLARE_API_TOKEN   — API token with "Edit Cloudflare Workers" permissions (see README)
+#   CLOUDFLARE_ACCOUNT_ID  — from the Cloudflare dashboard (Workers & Pages → Overview, right side)
+# The Turnstile secret is stored in Cloudflare once with `npx wrangler secret put TURNSTILE_SECRET_KEY`
+# and is kept across deploys, so CI never sees it.
+name: CI/CD
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-swisseph.txt
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt -r requirements-swisseph.txt
+      - name: Run tests
+        # The private golden fixtures are not in the repo, so those tests are skipped here.
+        run: python -m pytest -q
+      - name: Check the Worker script parses
+        run: node --check worker/index.js
+
+  deploy:
+    name: Deploy to Cloudflare
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment:
+      name: production
+      url: https://astrorealm.in
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # GeoNames dumps change slowly; reuse last month's download instead of fetching ~400 MB every deploy.
+      - name: Month stamp for the place-data cache
+        id: month
+        run: echo "stamp=$(date -u +%Y-%m)" >> "$GITHUB_OUTPUT"
+      - name: Restore place data
+        id: geo
+        uses: actions/cache@v4
+        with:
+          path: data/geonames.sqlite
+          key: geonames-${{ steps.month.outputs.stamp }}-${{ hashFiles('scripts/build_geonames.py') }}
+      - name: Build place data (GeoNames)
+        if: steps.geo.outputs.cache-hit != 'true'
+        run: python scripts/build_geonames.py
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install Wrangler
+        run: npm install --no-audit --no-fund
+      - name: Deploy (builds the container image and the Worker)
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx wrangler deploy
