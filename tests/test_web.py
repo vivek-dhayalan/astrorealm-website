@@ -130,7 +130,7 @@ def test_learn_pages_and_internal_links():
     from app.web.learn import ARTICLES, BY_SLUG
     s = Settings()
     assert len(ARTICLES) >= 6 and all(a.slug in views.learn_index(s) for a in ARTICLES)
-    known = {"/", "/horoscope", "/match", "/learn", "/credits", "/privacy", "/terms"} | {f"/learn/{a.slug}" for a in ARTICLES}
+    known = {"/", "/horoscope", "/match", "/learn", "/upcoming", "/credits", "/privacy", "/terms"} | {f"/learn/{a.slug}" for a in ARTICLES}
     for a in ARTICLES:
         page = views.learn_article(s, a)
         assert a.title in page
@@ -209,3 +209,17 @@ def test_client_ip_uses_first_forwarded_entry():
     # Cloudflare's header is no longer trusted unless configured
     assert client_ip({"cf-connecting-ip": "1.2.3.4"}, "10.0.0.1") == "10.0.0.1"
     assert client_ip({"cf-connecting-ip": "1.2.3.4"}, "10.0.0.1", "cf-connecting-ip") == "1.2.3.4"
+
+
+def test_footer_has_no_source_link_but_credits_does():
+    s = Settings(source_url="https://github.com/x/y")
+    home = views.home(s)
+    foot = home[home.index('<footer class="site-foot'):]
+    assert "github.com/x/y" not in foot and 'href="/upcoming"' in foot
+    assert "github.com/x/y" in views.credits(s)  # AGPL: the source stays offered
+
+
+def test_upcoming_page_lists_hidden_features():
+    page = views.upcoming(Settings())
+    for name in ("Manglik", "KP 7th cusp", "Dasavidha"):
+        assert name in page

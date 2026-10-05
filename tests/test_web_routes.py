@@ -23,7 +23,7 @@ def fresh_limiter():
     routes._limiter = None
 
 
-@pytest.mark.parametrize("path", ["/", "/horoscope", "/match", "/credits", "/privacy", "/terms", "/learn",
+@pytest.mark.parametrize("path", ["/", "/horoscope", "/match", "/credits", "/privacy", "/terms", "/learn", "/upcoming",
                                   "/learn/ayanamsa", "/learn/porutham", "/sitemap.xml",
                                   "/static/site.css", "/static/site.js"])
 def test_pages_load(path):

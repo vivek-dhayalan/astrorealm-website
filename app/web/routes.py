@@ -156,6 +156,11 @@ def terms_page():
     return html(views.terms(get_settings()))
 
 
+@router.get("/upcoming", response_class=HTMLResponse)
+def upcoming_page():
+    return html(views.upcoming(get_settings()))
+
+
 @router.get("/learn", response_class=HTMLResponse)
 def learn_index():
     return html(views.learn_index(get_settings()))
@@ -173,7 +178,7 @@ def learn_article(slug: str):
 def sitemap():
     base = (get_settings().base_url or "").rstrip("/")
     paths = ["/", "/horoscope", "/match", "/learn"] + [f"/learn/{a.slug}" for a in ARTICLES] + \
-            ["/credits", "/privacy", "/terms"]
+            ["/upcoming", "/credits", "/privacy", "/terms"]
     urls = "".join(f"<url><loc>{base}{p}</loc></url>" for p in paths)
     xml = f'<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">{urls}</urlset>'
     return Response(xml, media_type="application/xml")

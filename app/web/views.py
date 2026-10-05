@@ -39,7 +39,7 @@ def analytics_tags(measurement_id: str) -> str:
 
 
 TURNSTILE_JS = '<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>'
-STATIC_VERSION = "1"
+STATIC_VERSION = "2"
 
 
 def esc(v) -> str:
@@ -76,7 +76,6 @@ def layout(s: Settings, title: str, body: str, *, active: str = "", map_page: bo
         f'<a href="{href}"{cur if key == active else ""}>{label}</a>'
         for key, href, label in (("horoscope", "/horoscope", "Horoscope"), ("match", "/match", "Matching"),
                                  ("learn", "/learn", "Learn"), ("credits", "/credits", "Credits")))
-    source = f' · <a href="{esc(s.source_url)}" rel="noopener">Source code</a>' if s.source_url else ""
     consent = ""
     if ads_on or ga_on:
         what = " and ".join(x for x, on in (("ads from Google AdSense", ads_on),
@@ -110,7 +109,7 @@ def layout(s: Settings, title: str, body: str, *, active: str = "", map_page: bo
 {bottom}
 <footer class="site-foot no-print">
 <p>Free to use. For guidance only — consult an astrologer before taking decisions.</p>
-<p><a href="/learn">Learn</a> · <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · <a href="/credits">Credits</a>{source}</p>
+<p><a href="/learn">Learn</a> · <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · <a href="/credits">Credits</a> · <a href="/upcoming">Coming soon</a></p>
 <p class="small">Place data © <a href="https://www.geonames.org/" rel="noopener">GeoNames</a> (CC BY 4.0).
 Calculations use the Swiss Ephemeris © Astrodienst AG.</p>
 </footer>
@@ -603,6 +602,44 @@ Results depend on the accuracy of the birth time and place you enter.</li>
 def error_page(s: Settings, title: str, message: str, status_hint: str = "") -> str:
     body = f'<h1>{esc(title)}</h1><p>{esc(message)}</p><p>{esc(status_hint)}</p><p><a href="/">Home</a></p>'
     return layout(s, title, body)
+
+
+# ------------------------------------------------------------------ roadmap
+UPCOMING = [
+    ("In review", "Manglik (Chevvai) dosham check",
+     "Shows whether Mars causes dosham for the bride and the groom, and whether it is cancelled. The cancellation "
+     "rules are being checked with an astrologer before this appears in matching."),
+    ("In review", "KP 7th cusp analysis",
+     "Marriage matching through the 7th house cusp in KP astrology: its sub-lord and the houses it signifies. "
+     "Results are being compared with an astrologer's readings."),
+    ("Planned", "KP Dasavidha Porutham",
+     "The ten matching checks done the KP way, using star lords and sub-lords instead of the Moon's star alone."),
+    ("Planned", "Forms in your language",
+     "Results already print in English, Tamil, Telugu, Malayalam, Kannada and Hindi; the forms themselves will "
+     "follow."),
+    ("In review", "Better Telugu, Malayalam and Kannada",
+     "The labels in these languages are being reviewed by native speakers."),
+    ("Exploring", "More matching methods",
+     "Further checks astrologers use alongside Porutham and Ashtakoota, for example Papa Samyam (balance of "
+     "malefic influence) and Dasa Sandhi (timing of major periods)."),
+    ("Exploring", "Horoscope templates",
+     "A choice of print layouts and designs for your horoscope, from traditional to modern."),
+    ("Exploring", "Share on WhatsApp and email",
+     "Save your horoscope or matching result as a PDF and send it straight from your phone. Your details will still "
+     "not be stored on our side."),
+    ("Exploring", "AI assistant",
+     "Ask questions about your chart or matching result in plain language and get them explained, in your "
+     "language."),
+]
+
+
+def upcoming(s: Settings) -> str:
+    items = "".join(f'<li class="card"><span class="tag">{esc(st)}</span><h2>{esc(t)}</h2><p>{esc(d)}</p></li>'
+                    for st, t, d in UPCOMING)
+    body = (f'<h1>Coming soon</h1><p class="lead">What we are working on for {esc(s.site_name)}. '
+            f'Features appear only after their results have been checked against an astrologer\'s.</p>'
+            f'<ul class="cards roadmap">{items}</ul>')
+    return layout(s, "Coming soon", body)
 
 
 # ------------------------------------------------------------------ Learn section

@@ -56,6 +56,10 @@ a { color: var(--accent); }
   border-radius: var(--radius); color: var(--ink); text-decoration: none; }
 .card:hover { border-color: var(--accent); }
 .card h2 { margin: 0 0 .4rem; color: var(--accent); }
+.roadmap { list-style: none; padding: 0; }
+.roadmap .card:hover { border-color: var(--line); }
+.tag { display: inline-block; font-size: .75rem; padding: 2px 8px; margin-bottom: .5rem; border-radius: 999px;
+  border: 1px solid var(--accent); color: var(--accent); }
 
 /* forms */
 h1 { font-size: 1.6rem; margin: .4rem 0; }
