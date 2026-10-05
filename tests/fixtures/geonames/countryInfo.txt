@@ -1,0 +1,5 @@
+#ISO	ISO3	ISO-Numeric	fips	Country
+IN	IND	356	IN	India
+US	USA	840	US	United States
+PK	PAK	586	PK	Pakistan
+GB	GBR	826	UK	United Kingdom

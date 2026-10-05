@@ -1,0 +1,9 @@
+IN.25	Tamil Nadu	Tamil Nadu	1255053
+IN.13	Kerala	Kerala	1267254
+IN.40	Telangana	Telangana	1254788
+IN.16	Maharashtra	Maharashtra	1264418
+IN.34	Bihar	Bihar	1275715
+US.OR	Oregon	Oregon	5744337
+US.MA	Massachusetts	Massachusetts	6254926
+PK.05	Sindh	Sindh	1164807
+GB.ENG	England	England	6269131

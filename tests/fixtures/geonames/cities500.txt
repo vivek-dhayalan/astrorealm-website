@@ -1,0 +1,4 @@
+5750162	Salem	Salem		44.9429	-123.0351	P	PPLA	US		OR				175535			America/Los_Angeles	2024-01-01
+4950065	Salem	Salem		42.51954	-70.89672	P	PPLA2	US		MA				43226			America/New_York	2024-01-01
+1176734	Hyderabad	Hyderabad	Haidarabad	25.39242	68.37366	P	PPLA2	PK		05				1386330			Asia/Karachi	2024-01-01
+2643743	London	London	Londres	51.50853	-0.12574	P	PPLC	GB		ENG				8961989			Europe/London	2024-01-01

@@ -1,0 +1,16 @@
+{
+  "name": "astrorealm",
+  "private": true,
+  "description": "Cloudflare deployment for the AstroRealm website (Python app in a container)",
+  "license": "AGPL-3.0-only",
+  "scripts": {
+    "deploy": "wrangler deploy",
+    "logs": "wrangler tail"
+  },
+  "dependencies": {
+    "@cloudflare/containers": "latest"
+  },
+  "devDependencies": {
+    "wrangler": "latest"
+  }
+}

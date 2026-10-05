@@ -1,0 +1,15 @@
+.venv/
+**/__pycache__/
+*.pyc
+.pytest_cache/
+.git/
+data/raw/
+data/*.building
+tests/
+.env
+node_modules/
+worker/
+wrangler.jsonc
+package.json
+package-lock.json
+.wrangler/

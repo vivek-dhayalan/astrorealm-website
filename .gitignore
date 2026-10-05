@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+data/raw/
+data/*.sqlite
+data/*.building
+node_modules/
+.wrangler/
+.env
+# real people's birth data used to validate against the astrologer — never publish
+tests/fixtures/private/

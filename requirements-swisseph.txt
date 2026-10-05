@@ -1,0 +1,4 @@
+# Optional: Swiss Ephemeris (AGPL). Without it the built-in engine is used.
+# If this fails with a compiler error, install "Microsoft C++ Build Tools"
+# (https://visualstudio.microsoft.com/visual-cpp-build-tools/) or skip it.
+pyswisseph>=2.10

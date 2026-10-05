@@ -1,0 +1,10 @@
+1264527	Chennai	Chennai	Madras,Chennai	13.08784	80.27847	P	PPLA	IN		25				4646732			Asia/Kolkata	2024-01-01
+1264521	Madurai	Madurai	Madura,Mathurai	9.91735	78.11962	P	PPLA2	IN		25				909908			Asia/Kolkata	2024-01-01
+1257629	Salem	Salem	Selam	11.65376	78.15538	P	PPLA2	IN		25				693236			Asia/Kolkata	2024-01-01
+1254163	Thiruvananthapuram	Thiruvananthapuram	Trivandrum,Tiruvanantapuram	8.4855	76.94924	P	PPLA	IN		13				784153			Asia/Kolkata	2024-01-01
+1269843	Hyderabad	Hyderabad	Haidarabad	17.38405	78.45636	P	PPLA	IN		40				3597816			Asia/Kolkata	2024-01-01
+1278149	Aurangabad	Aurangabad		19.87757	75.34226	P	PPLA2	IN		16				1016441			Asia/Kolkata	2024-01-01
+1278148	Aurangabad	Aurangabad		24.75204	84.3742	P	PPLA2	IN		34				95929			Asia/Kolkata	2024-01-01
+9999001	Kovilpatti	Kovilpatti		9.17167	77.86989	P	PPL	IN		25				95057			Asia/Kolkata	2024-01-01
+1254388	Tiruchirappalli	Tiruchirappalli	Trichy,Trichinopoly,Tiruchi	10.8155	78.69651	P	PPLA2	IN		25				847387			Asia/Kolkata	2024-01-01
+1275339	Mumbai	Mumbai	Bombay	19.07283	72.88261	P	PPLA	IN		16				12691836			Asia/Kolkata	2024-01-01
