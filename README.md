@@ -49,15 +49,20 @@ billing account (Firebase's Blaze plan) — set a budget alert.
 Files: `Dockerfile`, `deploy/cloudrun.env.yaml` (non-secret settings), `firebase.json` and `.firebaserc`
 (Hosting rewrite to the Cloud Run service), `deploy/ar-cleanup-policy.json` (keeps only recent images).
 
-**One-time setup** (Google Cloud Shell or the `gcloud` CLI; replace the project id):
+**One-time setup** (Google Cloud Shell or the `gcloud` CLI; replace the project id). Run it from the
+repository root — in Cloud Shell, clone it first:
 
 ```bash
+git clone https://github.com/vivek-dhayalan/astrorealm-website.git && cd astrorealm-website
 PROJECT=astrorealm-in            # your project id (also put it in .firebaserc)
 REPO=vivek-dhayalan/astrorealm-website
 gcloud config set project $PROJECT
 NUMBER=$(gcloud projects describe $PROJECT --format='value(projectNumber)')
 gcloud services enable run.googleapis.com artifactregistry.googleapis.com secretmanager.googleapis.com \
-  iamcredentials.googleapis.com sts.googleapis.com firebasehosting.googleapis.com cloudresourcemanager.googleapis.com
+  iamcredentials.googleapis.com sts.googleapis.com firebase.googleapis.com firebasehosting.googleapis.com \
+  cloudresourcemanager.googleapis.com
+firebase login --no-localhost                    # Cloud Shell's own credentials can't add Firebase
+firebase projects:addfirebase $PROJECT
 
 # image registry in Mumbai, keeping only the newest images
 gcloud artifacts repositories create astrorealm --repository-format=docker --location=asia-south1
@@ -237,4 +242,3 @@ pytest
 
 * Swiss Ephemeris / pyswisseph: AGPL (or Astrodienst commercial licence).
 * Place data © GeoNames (geonames.org), CC BY 4.0. Fallback geocoding © OpenStreetMap contributors (ODbL).
-
