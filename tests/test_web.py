@@ -200,3 +200,12 @@ def test_no_ad_space_without_adsense():
     on = views.horoscope_form(Settings(adsense_client="ca-pub-1", adsense_slot_top="1", adsense_slot_side="2"),
                               HoroscopeForm())
     assert "ad-top" in on and "with-side" in on
+
+
+def test_client_ip_uses_first_forwarded_entry():
+    from app.web.security import client_ip
+    assert client_ip({"x-forwarded-for": "203.0.113.7, 35.191.0.1"}, "10.0.0.1") == "203.0.113.7"
+    assert client_ip({}, "10.0.0.1") == "10.0.0.1"
+    # Cloudflare's header is no longer trusted unless configured
+    assert client_ip({"cf-connecting-ip": "1.2.3.4"}, "10.0.0.1") == "10.0.0.1"
+    assert client_ip({"cf-connecting-ip": "1.2.3.4"}, "10.0.0.1", "cf-connecting-ip") == "1.2.3.4"

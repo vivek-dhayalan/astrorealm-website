@@ -1,0 +1,9 @@
+{
+  "hosting": {
+    "public": "hosting",
+    "ignore": ["**/.*"],
+    "rewrites": [
+      { "source": "**", "run": { "serviceId": "astrorealm", "region": "asia-south1" } }
+    ]
+  }
+}

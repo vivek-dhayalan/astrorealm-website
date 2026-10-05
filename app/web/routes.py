@@ -20,7 +20,7 @@ router = APIRouter(include_in_schema=False)
 _limiter: RateLimiter | None = None
 
 NO_STORE = {"Cache-Control": "no-store", "X-Robots-Tag": "noindex", "Referrer-Policy": "same-origin"}
-PAGE = {"Referrer-Policy": "same-origin", "X-Content-Type-Options": "nosniff"}
+PAGE = {"Referrer-Policy": "same-origin", "X-Content-Type-Options": "nosniff", "Cache-Control": "no-cache"}
 
 
 def limiter() -> RateLimiter:
@@ -37,7 +37,7 @@ def html(content: str, status: int = 200, private: bool = False) -> HTMLResponse
 async def _guard(request: Request, form: dict) -> str | None:
     """Rate limit and bot check. Returns an error message, or None when the request may proceed."""
     s = get_settings()
-    ip = client_ip(request.headers, request.client.host if request.client else None)
+    ip = client_ip(request.headers, request.client.host if request.client else None, get_settings().client_ip_header)
     if not limiter().allow(ip):
         return "Too many requests from your network. Please wait a minute and try again."
     if s.turnstile_enabled:
@@ -199,7 +199,7 @@ def robots():
 # ------------------------------------------------------------------ helpers for the place widget
 @router.get("/v1/places/nearest")
 def nearest_place(request: Request, lat: float = Query(..., ge=-90, le=90), lon: float = Query(..., ge=-180, le=180)):
-    ip = client_ip(request.headers, request.client.host if request.client else None)
+    ip = client_ip(request.headers, request.client.host if request.client else None, get_settings().client_ip_header)
     if not limiter().allow("near:" + ip):
         return JSONResponse({"error": "RATE_LIMITED"}, status_code=429)
     r = get_resolver()

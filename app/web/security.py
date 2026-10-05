@@ -12,9 +12,17 @@ from collections import deque
 TURNSTILE_VERIFY_URL = "https://challenges.cloudflare.com/turnstile/v0/siteverify"
 
 
-def client_ip(headers, fallback: str | None) -> str:
-    # Behind Cloudflare the real client is in CF-Connecting-IP; never trust X-Forwarded-For blindly.
-    return headers.get("cf-connecting-ip") or fallback or "unknown"
+def client_ip(headers, fallback: str | None, header: str = "x-forwarded-for") -> str:
+    """Best-effort visitor IP, used only as a rate-limit key.
+
+    On Google Cloud Run (behind Firebase Hosting) the visitor's address is the first entry of X-Forwarded-For.
+    A client can forge that entry, so the rate limit is a convenience, not a security boundary; Turnstile is
+    the real bot check. Set CLIENT_IP_HEADER to another header (e.g. cf-connecting-ip) when the host provides one.
+    """
+    value = headers.get(header) if header else None
+    if value:
+        return value.split(",")[0].strip()[:64] or (fallback or "unknown")
+    return fallback or "unknown"
 
 
 class RateLimiter:

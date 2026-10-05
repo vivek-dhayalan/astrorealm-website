@@ -575,7 +575,8 @@ the page you asked for, then discarded. They are not stored, logged or sent to a
 </ul>
 <h2>Third parties</h2>
 <ul>
-<li><b>Cloudflare</b> protects the site and runs the Turnstile bot check.</li>
+<li><b>Google Cloud</b> (Cloud Run and Firebase Hosting, Mumbai region) hosts the site.</li>
+<li><b>Cloudflare</b> runs the Turnstile bot check on the forms.</li>
 {ads_li}{ga_li}<li><b>Google Fonts</b> and <b>unpkg</b> serve fonts and the map library; <b>OpenFreeMap</b> serves the map images
 when you use “Pick on map”.</li>
 </ul>

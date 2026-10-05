@@ -26,8 +26,7 @@ Output languages: English, Tamil, Telugu, Malayalam, Kannada, Hindi. The form it
 Telugu, Malayalam and Kannada astrology terms (`app/render/i18n.py`, `app/web/strings.py`) are drafts —
 please have native speakers review them.
 
-Abuse protection: per-IP rate limit (`RATE_LIMIT_PER_MINUTE`) and Cloudflare Turnstile when its keys are set.
-Put the site behind Cloudflare's proxy for DDoS protection. Ad slots (Google AdSense) appear when `ADSENSE_CLIENT`
+Abuse protection: per-IP rate limit (`RATE_LIMIT_PER_MINUTE`) and Cloudflare Turnstile when its keys are set. Ad slots (Google AdSense) appear when `ADSENSE_CLIENT`
 is set; in development dashed placeholders show where they go. See `.env.example` for every setting.
 With `MATCHAPI_ENV=production` the app refuses to start without Turnstile keys and `SOURCE_URL`.
 
@@ -40,56 +39,83 @@ source (`SOURCE_URL`). Add the licence text once (the build container can't down
 Invoke-WebRequest https://www.gnu.org/licenses/agpl-3.0.txt -OutFile LICENSE
 ```
 
-### Deploy on Cloudflare (Containers)
+### Deploy on Google Cloud (Cloud Run + Firebase Hosting)
 
-The site runs as a container behind a tiny Worker (`worker/index.js`, `wrangler.jsonc`). Needs the
-**Workers Paid plan** ($5/month; includes 25 GiB-hours memory and 375 vCPU-minutes a month), Node.js 20+,
-and Docker Desktop running (images are built locally for linux/amd64).
+The app runs as a container on **Cloud Run** in Mumbai (`asia-south1`). **Firebase Hosting** puts it on
+`astrorealm.in` with a free SSL certificate while the domain's DNS stays at GoDaddy (Cloud Run's own domain
+mapping isn't offered in Mumbai). At low traffic this stays within Google's free tiers; the project needs a
+billing account (Firebase's Blaze plan) — set a budget alert.
 
-1. Build the place database once: `python scripts/build_geonames.py` → `data/geonames.sqlite` (~150 MB, baked into the image).
-2. Add the licence text: `Invoke-WebRequest https://www.gnu.org/licenses/agpl-3.0.txt -OutFile LICENSE`.
-3. In `wrangler.jsonc` → `vars`, set `SITE_BASE_URL`, `SOURCE_URL`, `TURNSTILE_SITE_KEY`, `GA_MEASUREMENT_ID`
-   (Google Analytics 4, optional) and later the AdSense ids. The app refuses to start in production without the Turnstile keys and `SOURCE_URL`.
-4. Deploy:
+Files: `Dockerfile`, `deploy/cloudrun.env.yaml` (non-secret settings), `firebase.json` and `.firebaserc`
+(Hosting rewrite to the Cloud Run service), `deploy/ar-cleanup-policy.json` (keeps only recent images).
 
-```powershell
-npm install
-npx wrangler login
-npx wrangler secret put TURNSTILE_SECRET_KEY
-npx wrangler deploy
+**One-time setup** (Google Cloud Shell or the `gcloud` CLI; replace the project id):
+
+```bash
+PROJECT=astrorealm-in            # your project id (also put it in .firebaserc)
+REPO=vivek-dhayalan/astrorealm-website
+gcloud config set project $PROJECT
+NUMBER=$(gcloud projects describe $PROJECT --format='value(projectNumber)')
+gcloud services enable run.googleapis.com artifactregistry.googleapis.com secretmanager.googleapis.com \
+  iamcredentials.googleapis.com sts.googleapis.com firebasehosting.googleapis.com cloudresourcemanager.googleapis.com
+
+# image registry in Mumbai, keeping only the newest images
+gcloud artifacts repositories create astrorealm --repository-format=docker --location=asia-south1
+gcloud artifacts repositories set-cleanup-policies astrorealm --location=asia-south1 \
+  --policy=deploy/ar-cleanup-policy.json --no-dry-run
+
+# Turnstile secret (paste the secret key when prompted, then Ctrl-D)
+gcloud secrets create turnstile-secret --data-file=-
+gcloud secrets add-iam-policy-binding turnstile-secret \
+  --member=serviceAccount:$NUMBER-compute@developer.gserviceaccount.com --role=roles/secretmanager.secretAccessor
+
+# deploy identity for GitHub Actions
+gcloud iam service-accounts create github-deploy --display-name="GitHub deploy"
+SA=github-deploy@$PROJECT.iam.gserviceaccount.com
+for ROLE in roles/run.admin roles/artifactregistry.writer roles/firebasehosting.admin; do
+  gcloud projects add-iam-policy-binding $PROJECT --member=serviceAccount:$SA --role=$ROLE
+done
+gcloud iam service-accounts add-iam-policy-binding $NUMBER-compute@developer.gserviceaccount.com \
+  --member=serviceAccount:$SA --role=roles/iam.serviceAccountUser
+
+# let only this GitHub repo act as that identity (no keys stored anywhere)
+gcloud iam workload-identity-pools create github --location=global --display-name="GitHub"
+gcloud iam workload-identity-pools providers create-oidc github --location=global --workload-identity-pool=github \
+  --issuer-uri=https://token.actions.githubusercontent.com \
+  --attribute-mapping="google.subject=assertion.sub,attribute.repository=assertion.repository" \
+  --attribute-condition="assertion.repository=='$REPO'"
+gcloud iam service-accounts add-iam-policy-binding $SA --role=roles/iam.workloadIdentityUser \
+  --member="principalSet://iam.googleapis.com/projects/$NUMBER/locations/global/workloadIdentityPools/github/attribute.repository/$REPO"
+echo "GCP_WIF_PROVIDER = projects/$NUMBER/locations/global/workloadIdentityPools/github/providers/github"
+echo "GCP_DEPLOY_SA    = $SA"
 ```
 
-5. Add the domain to Cloudflare, then uncomment `routes` in `wrangler.jsonc` and deploy again.
-   `npx wrangler tail` shows live logs.
+Then:
 
-The container uses the `basic` instance (1/4 vCPU, 1 GiB) with one uvicorn worker and sleeps after 10 idle
-minutes; the first request after that takes a few seconds while it starts. Cloudflare passes the visitor's
-IP in `CF-Connecting-IP`, which the rate limiter uses.
+1. **GitHub** → Settings → Secrets and variables → Actions: variable `GCP_PROJECT_ID`; secrets `GCP_WIF_PROVIDER`
+   and `GCP_DEPLOY_SA` (the two values printed above).
+2. Fill in `TURNSTILE_SITE_KEY` (and later `GA_MEASUREMENT_ID`) in `deploy/cloudrun.env.yaml`.
+3. Push to `main`: CI tests, builds the image, deploys Cloud Run and publishes Firebase Hosting.
+4. **Firebase console** → add Firebase to the same Google Cloud project → Hosting → **Add custom domain**
+   `astrorealm.in` (and `www.astrorealm.in`, redirecting to it). Firebase shows a TXT record and A record(s).
+5. **GoDaddy** → My Products → astrorealm.in → DNS: delete GoDaddy's default "Parked" A record and any
+   forwarding, then add the records Firebase showed. SSL is issued automatically (minutes to a few hours).
+6. **Billing** → Budgets & alerts: add a small monthly budget (e.g. ₹500) with email alerts.
+7. In Cloudflare Turnstile, set the widget's hostname to `astrorealm.in` (Turnstile still works; only hosting moved).
+
+Notes: Cloud Run scales to zero, so the first visit after a quiet spell takes a few seconds. Firebase Hosting
+forwards no cookies except `__session` — the site uses none. The visitor IP for rate limiting comes from
+`X-Forwarded-For` (`CLIENT_IP_HEADER`); it can be forged, so Turnstile remains the real bot check.
+
+The same Dockerfile runs anywhere: `docker build -t astrorealm . ; docker run -p 8080:8080 --env-file .env astrorealm`.
 
 ### CI/CD (GitHub Actions)
 
-`.github/workflows/ci.yml` runs the tests on every push and pull request. On a push to `main`, once the
-tests pass, it builds the place database (cached for the month) and runs `wrangler deploy`.
-
-One-time setup:
-
-1. Cloudflare dashboard → **My Profile → API Tokens → Create Token** → template **Edit Cloudflare Workers**,
-   limited to your account (and the `astrorealm.in` zone). If a deploy fails with a permission error about
-   containers or images, edit the token and add the Containers permission.
-2. GitHub repo → **Settings → Secrets and variables → Actions → New repository secret**:
-   `CLOUDFLARE_API_TOKEN` (the token) and `CLOUDFLARE_ACCOUNT_ID` (Cloudflare dashboard → Workers & Pages,
-   right-hand side).
-3. Once, from your machine: `npx wrangler secret put TURNSTILE_SECRET_KEY` (secrets stay in Cloudflare across
-   deploys; CI never sees them).
-4. Optional: GitHub → **Settings → Environments → production** → add yourself as a required reviewer so every
-   deploy waits for your approval.
-
-The same Dockerfile runs on any other host too:
-`docker build -t astrorealm . ; docker run -p 8000:8000 --env-file .env astrorealm`.
-
-The map uses MapLibre with OpenFreeMap tiles (free, no API key, commercial use allowed; `MAP_STYLE_URL`
-switches provider). Before going public: keep `MATCHAPI_NOMINATIM=0`, and get AdSense approval (it needs the privacy page and, for EEA/UK visitors, a
-Google-certified consent tool).
+`.github/workflows/ci.yml` runs the tests on every push and pull request. On a push to `main`, once the tests
+pass, it builds the place database (cached for the month), builds and pushes the image to Artifact Registry,
+deploys Cloud Run and publishes Firebase Hosting. GitHub signs in to Google with Workload Identity Federation,
+so no Google key is stored in GitHub. Optional: GitHub → Settings → Environments → `production` → add yourself
+as a required reviewer so each deploy waits for your approval.
 
 ## Setup (Windows, Python 3.10+)
 

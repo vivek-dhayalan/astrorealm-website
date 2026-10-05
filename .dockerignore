@@ -13,3 +13,8 @@ wrangler.jsonc
 package.json
 package-lock.json
 .wrangler/
+firebase.json
+.firebaserc
+hosting/
+deploy/
+.github/

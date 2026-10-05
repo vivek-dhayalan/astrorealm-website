@@ -1,0 +1,2 @@
+AstroRealm — https://astrorealm.in
+Every page is served by the Cloud Run service through the rewrite in firebase.json.
