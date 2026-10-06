@@ -1,7 +1,7 @@
 """Request examples shown as a dropdown in the Swagger UI (/docs)."""
 
 _BY_PLACE = {"name": "Arun", "sex": "M", "dob": "1987-08-12", "tob": "06:10 AM", "place": "Trichy, Tamil Nadu, India"}
-_BY_COORDS = {"name": "Priya", "sex": "F", "dob": "1990-05-14", "tob": "19:45", "lat": 13.0827, "lon": 80.2707}
+_BY_COORDS = {"name": "Priya", "sex": "F", "dob": "1991-09-23", "tob": "06:30", "lat": 13.0827, "lon": 80.2707}
 _WITH_OFFSET = {"sex": "M", "dob": "1950-03-10", "tob": "06:15 AM", "lat": 18.9750, "lon": 72.8258,
                 "utcOffset": "+04:51"}
 

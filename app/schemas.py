@@ -19,8 +19,8 @@ class PersonIn(BaseModel):
 
     name: str | None = Field(None, max_length=80, description="Optional, display only — never used in calculations")
     sex: Sex
-    dob: str = Field(..., description="Date of birth, YYYY-MM-DD", examples=["1990-05-14"])
-    tob: str = Field(..., description="Time of birth: '19:45' (24h) or '07:45 PM' (12h)", examples=["07:45 PM"])
+    dob: str = Field(..., description="Date of birth, YYYY-MM-DD", examples=["1991-09-23"])
+    tob: str = Field(..., description="Time of birth: '19:45' (24h) or '07:45 PM' (12h)", examples=["06:30 AM"])
     lat: float | None = Field(None, ge=-90, le=90)
     lon: float | None = Field(None, ge=-180, le=180)
     place: str | None = Field(None, description="Free-text place, e.g. 'Madurai, Tamil Nadu'")

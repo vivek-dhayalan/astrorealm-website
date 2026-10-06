@@ -158,7 +158,7 @@ Without it the API runs on the built-in engine (cusps to ~1″, planets to secon
 ```http
 POST /v1/match
 {
-  "personA": { "sex": "M", "dob": "1990-05-14", "tob": "07:45 PM", "lat": 13.0827, "lon": 80.2707 },
+  "personA": { "sex": "M", "dob": "1991-09-23", "tob": "06:30 AM", "lat": 13.0827, "lon": 80.2707 },
   "personB": { "sex": "F", "dob": "1992-11-02", "tob": "21:10", "place": "Madurai, Tamil Nadu" },
   "options": { "ayanamsa": "LAHIRI", "methods": ["ASHTAKOOTA", "PORUTHAM", "MANGLIK", "KP_7TH_CUSP"] }
 }

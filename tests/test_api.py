@@ -11,7 +11,7 @@ from app.main import app  # noqa: E402
 resolver_mod._resolver = None  # pick up the fixture DB
 client = TestClient(app)
 
-BOY = {"sex": "M", "dob": "1990-05-14", "tob": "07:45 PM", "lat": 13.0827, "lon": 80.2707}
+BOY = {"sex": "M", "dob": "1991-09-23", "tob": "06:30 AM", "lat": 13.0827, "lon": 80.2707}
 GIRL = {"sex": "F", "dob": "1992-11-02", "tob": "21:10", "place": "Madurai, Tamil Nadu"}
 
 
