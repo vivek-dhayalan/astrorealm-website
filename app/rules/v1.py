@@ -146,9 +146,28 @@ PORUTHAM_MADHYAMAM_REQUIRED = ["Rajju"]
 PORUTHAM_LABELS = {"UTTAMAM": "Excellent", "MADHYAMAM": "Average", "ADHAMAM": "Poor"}
 
 # ------------------------------------------------------------ Mangal dosha
+# Shown in two traditions side by side: South Indian Chevvai dosham and North Indian Manglik.
+# VERIFY all of this with the astrologer.
 MANGLIK_HOUSES = {1, 2, 4, 7, 8, 12}
+# weight of Mars's house: 7th/8th heavy, 1st/4th medium, 2nd/12th mild
+MANGLIK_HOUSE_WEIGHT = {7: 3, 8: 3, 1: 2, 4: 2, 2: 1, 12: 1}
+MANGLIK_STRONG_AT = 2           # weight ≥ this → STRONG, else MILD
 MARS_OWN_OR_EXALTED = {0, 7, 9}  # Mesha, Vrishchika, Makara
-# (house from reference, rashi of Mars) combinations that cancel the dosha
+MANGLIK_TRADITIONS = {
+    "SOUTH": {
+        # Follows the astrologer's verdict on golden pair 1 (both Chevvai, mutual): Jupiter's 5th/9th aspect on
+        # Mars did NOT cancel it, and a strong 7th did not soften it. Only Jupiter *with* Mars cancels here.
+        "refs": ("lagna",),                       # counted from Lagna only
+        "cancel": ("OWN_OR_EXALTED", "WITH_JUPITER"),
+        "reduce": (),
+    },
+    "NORTH": {
+        "refs": ("lagna", "moon", "venus"),       # Moon/Venus alone = partial (MILD at most)
+        "cancel": ("OWN_OR_EXALTED", "JUPITER_ASPECT", "HOUSE_SIGN_EXCEPTION", "WITH_MOON"),
+        "reduce": ("STRONG_7TH_LORD", "MOVABLE_SIGN"),
+    },
+}
+# (house from reference, rashi of Mars) combinations that cancel the dosha (North bhanga list)
 MANGLIK_HOUSE_SIGN_EXCEPTIONS = {
     2: {2, 5},      # 2nd in Mithuna/Kanya
     4: {0, 7},      # 4th in Mesha/Vrishchika
@@ -156,7 +175,19 @@ MANGLIK_HOUSE_SIGN_EXCEPTIONS = {
     8: {8, 11},     # 8th in Dhanu/Meena
     12: {1, 6},     # 12th in Vrishabha/Tula
 }
-MANGLIK_CANCEL_CONJUNCT = {"Jupiter", "Moon"}
+MOVABLE_SIGNS = {0, 3, 6, 9}
+
+# ------------------------------------------------------------ dignity and aspects (shared)
+EXALTATION = {"Sun": 0, "Moon": 1, "Mars": 9, "Mercury": 5, "Jupiter": 3, "Venus": 11, "Saturn": 6}
+# whole-sign aspects (graha drishti), counted inclusively from the planet's sign; every planet aspects the 7th
+SPECIAL_ASPECTS = {"Mars": {4, 8}, "Jupiter": {5, 9}, "Saturn": {3, 10}}
+MALEFICS = ("Mars", "Saturn")
+BENEFICS = ("Jupiter", "Venus")
+
+# ------------------------------------------------------------ Rahu / Ketu (advisory, never a veto)
+NODE_7TH_WEIGHT = {"lagna": 2, "moon": 1}   # node in the 7th from Lagna counts more than from the Moon
+NODE_STRONG_AT = 3                          # weight ≥ this → STRONG, else MILD (never below MILD)
+KALA_SARPA_PLANETS = ("Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn")
 
 # -------------------------------------------------------------------- KP
 KP_GOOD_HOUSES = {2, 7, 11}

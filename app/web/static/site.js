@@ -194,4 +194,16 @@
 
   document.querySelectorAll(".place-field").forEach(initPlace);
   document.querySelectorAll(".rte").forEach(initRte);
+  // ---------------------------------------------------------------- "Save as PDF" file name
+  // Browsers name the PDF after document.title. Result pages keep a generic title (no names in history or tab
+  // sync); the meaningful one is swapped in only while the print dialog is open.
+  var printSheets = document.querySelector(".sheets[data-print-title]");
+  if (printSheets) {
+    var savedTitle = document.title;
+    window.addEventListener("beforeprint", function () {
+      savedTitle = document.title;
+      document.title = printSheets.getAttribute("data-print-title") || savedTitle;
+    });
+    window.addEventListener("afterprint", function () { document.title = savedTitle; });
+  }
 })();

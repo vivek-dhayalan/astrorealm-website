@@ -151,28 +151,74 @@ def test_varna_boy_lower_than_girl_fails():
 
 
 # ------------------------------------------------------------ Manglik
-def test_mars_fourth_from_lagna_is_high():
+def test_mars_fourth_from_lagna_is_strong():
+    # Lagna Mesha, Mars in Karka (4th, debilitated); Jupiter in Dhanu does not aspect Karka
     c = make_chart(200.0, asc=5.0, Mars=95.0, Venus=300.0, Jupiter=250.0)
-    a = manglik.assess(c)
-    assert a["status"] == "HIGH" and "fromLagna" in a["afflictedFrom"]
+    a = manglik.assess(c, "SOUTH")
+    assert a["presentFrom"] == ["lagna"] and a["houses"]["lagna"] == 4 and a["grade"] == "STRONG"
+    assert a["status"] == "STRONG" and any(f["code"] == "DEBILITATED" for f in a["factors"])
 
 
 def test_mars_in_own_sign_is_cancelled():
     a = manglik.assess(make_chart(200.0, asc=5.0, Mars=15.0, Venus=300.0, Jupiter=250.0))
-    assert a["status"] == "CANCELLED" and a["doshaLevel"] == "HIGH"
+    assert a["status"] == "CANCELLED" and a["grade"] == "STRONG"  # 1st from Lagna in Mesha
+    assert any(f["code"] == "OWN_OR_EXALTED" and f["effect"] == "CANCELS" for f in a["factors"])
+
+
+def test_jupiter_aspect_cancels_only_in_north():
+    # Mars in Karka (4th from Mesha lagna), Jupiter in Makara aspects Karka (7th)
+    c = make_chart(200.0, asc=5.0, Mars=95.0, Venus=300.0, Jupiter=280.0)
+    assert manglik.assess(c, "NORTH")["status"] == "CANCELLED"
+    assert manglik.assess(c, "SOUTH")["status"] == "STRONG"  # astrologer: aspect alone doesn't cancel (pair 1)
+    # Jupiter in the same sign as Mars cancels in both
+    w = make_chart(200.0, asc=5.0, Mars=95.0, Venus=300.0, Jupiter=100.0)
+    assert manglik.assess(w, "SOUTH")["status"] == "CANCELLED" == manglik.assess(w, "NORTH")["status"]
+
+
+def test_house_weights_and_partial():
+    # Mars 2nd from Lagna in Vrishabha (Venus's sign, neutral to Mars) → MILD
+    a = manglik.assess(make_chart(100.0, asc=5.0, Mars=40.0, Venus=100.0, Jupiter=250.0, Saturn=250.0))
+    assert a["grade"] == "MILD"
+    # North: not from Lagna (Mars 3rd), but 12th from the Moon → partial, MILD at most
+    n = manglik.assess(make_chart(100.0, asc=5.0, Mars=70.0, Venus=200.0, Jupiter=250.0, Saturn=250.0), "NORTH")
+    assert n["presentFrom"] == ["moon"] and n["grade"] == "MILD"
+    assert manglik.assess(make_chart(100.0, asc=5.0, Mars=70.0, Venus=200.0), "SOUTH")["status"] == "NONE"
 
 
 def test_no_dosha():
-    a = manglik.assess(make_chart(100.0, asc=100.0, Mars=160.0, Venus=100.0))  # Mars 3rd from all
+    a = manglik.assess(make_chart(100.0, asc=100.0, Mars=160.0, Venus=100.0), "NORTH")  # Mars 3rd from all
     assert a["status"] == "NONE"
 
 
 def test_manglik_pair_results():
-    high = make_chart(200.0, asc=5.0, Mars=95.0, Venus=300.0, Jupiter=250.0)
+    strong = make_chart(200.0, asc=5.0, Mars=95.0, Venus=300.0, Jupiter=250.0)
+    mild = make_chart(100.0, asc=5.0, Mars=40.0, Venus=100.0, Jupiter=250.0, Saturn=250.0)
     none = make_chart(100.0, asc=100.0, Mars=160.0, Venus=100.0)
-    assert manglik.match(high, none)["result"] == "MISMATCH"
-    assert manglik.match(high, high)["result"] == "MUTUAL"
+    r = manglik.match(strong, none)
+    assert r["result"] == "ONE_SIDED" and r["details"]["south"]["who"] == "boy"
+    assert manglik.match(strong, strong)["result"] == "MUTUAL"
+    assert manglik.match(strong, mild)["result"] == "PARTLY_BALANCED"
     assert manglik.match(none, none)["result"] == "NO_DOSHA"
+    assert set(r["details"]) == {"south", "north"}
+
+
+# ------------------------------------------------------------ Rahu / Ketu
+def test_rahu_in_seventh():
+    from app.matching import nodes
+    # Lagna Mesha, Rahu in Tula (7th), Ketu in Mesha
+    a = nodes.assess(make_chart(100.0, asc=5.0, Rahu=190.0))
+    assert {"node": "Rahu", "ref": "lagna"} in a["seventh"] and a["status"] in ("MILD", "STRONG")
+    none = make_chart(100.0, asc=100.0, Rahu=160.0)
+    assert nodes.assess(none)["status"] == "NONE"
+    assert nodes.match(make_chart(100.0, asc=5.0, Rahu=190.0), none)["result"] == "ONE_SIDED"
+
+
+def test_kala_sarpa():
+    from app.matching import nodes
+    c = make_chart(20.0, asc=5.0, Rahu=0.5, Sun=10.0, Mercury=30.0, Venus=60.0, Mars=90.0, Jupiter=120.0,
+                   Saturn=150.0)
+    assert nodes.kala_sarpa(c)
+    assert not nodes.kala_sarpa(make_chart(20.0, asc=5.0, Rahu=0.5, Saturn=250.0))
 
 
 # ----------------------------------------------------------------- KP

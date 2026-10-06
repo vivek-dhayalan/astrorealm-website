@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import contextvars
 import json
+import re
 from datetime import datetime
 from html import escape
 from zoneinfo import ZoneInfo
@@ -45,7 +46,7 @@ def analytics_tags(measurement_id: str) -> str:
 
 
 TURNSTILE_JS = '<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>'
-STATIC_VERSION = "10"
+STATIC_VERSION = "12"
 
 
 def esc(v) -> str:
@@ -311,6 +312,10 @@ TIPS = {
                   "Krishnamurti Paddhati tables: for every planet and house cusp, the sign lord, star (nakshatra) "
                   "lord, sub lord and finer sub-sub levels, plus the houses each one signifies. Always calculated "
                   "with the KP ayanamsa. Prints as a separate page.", "/learn/kp-astrology"),
+    "DOSHAS": ("What are the dosha details?",
+               "Chevvai (Manglik) dosham under both the South and North Indian rules, and Rahu or Ketu in the 7th "
+               "house — each with what raises, lowers or cancels it. A dosha is one input, not a verdict. Prints as a "
+               "separate page.", ""),
 }
 
 
@@ -324,7 +329,8 @@ def tip(key: str) -> str:
     return (f'<span class="tip"><button type="button" class="tip-btn" aria-expanded="false" aria-controls="{tid}" '
             f'aria-label="{esc(title)}" data-action="tip">i</button>'
             f'<span class="tip-box" id="{tid}" role="note"><b>{esc(title)}</b> {esc(text)} '
-            f'<a href="{href}" target="_blank" rel="noopener">{esc(L("Learn more"))}</a></span></span>')
+            + (f'<a href="{href}" target="_blank" rel="noopener">{esc(L("Learn more"))}</a>' if href else "")
+            + '</span></span>')
 
 
 def select_field(key: str, label: str, value: str, options: list[tuple[str, str]], errors: dict,
@@ -451,7 +457,8 @@ def _horoscope_form(s: Settings, frm: HoroscopeForm, message, candidates, ui: st
     parts = "".join(
         f'<span class="check-wrap"><label class="check"><input type="checkbox" name="parts" value="{p}"'
         f'{" checked" if p in frm.parts else ""}> {esc(L(lbl))}</label>{tip(p)}</span>'
-        for p, lbl in zip(CHART_PARTS, ("Rasi chart", "Navamsa chart", "KP planet & cusp tables")))
+        for p, lbl in zip(CHART_PARTS, ("Rasi chart", "Navamsa chart", "KP planet & cusp tables",
+                                         "Dosha details (Chevvai / Manglik, Rahu–Ketu)")))
     num = lambda k, lbl: text_field(k, lbl, "" if getattr(frm, k) is None else str(getattr(frm, k)), e,  # noqa: E731
                                     type_="number", maxlength=2, extra=' min="0" max="20" inputmode="numeric"')
     living = [("living", "Living"), ("deceased", "Deceased")]
@@ -594,7 +601,7 @@ def toolbar(back: str, ui: str = "en") -> str:
 
 
 def horoscope_result(s: Settings, frm: HoroscopeForm, place_label: str, chart, svgs: dict[str, str],
-                     ui: str = "en") -> str:
+                     ui: str = "en", doshas: dict | None = None) -> str:
     lang = frm.lang
     b = frm.birth
 
@@ -637,12 +644,30 @@ def horoscope_result(s: Settings, frm: HoroscopeForm, place_label: str, chart, s
 <div class="cols"><div>{sec("birth_details", birth)}</div><div>{right}</div></div>
 {about}{grids_html}
 {foot}</section>"""]
+    if doshas:
+        cols = [(b.name or t(lang, "horoscope"), doshas["manglik"], doshas["rahuKetu"])]
+        sheets.append(f'<section class="sheet doshas single-dosha"><header class="sheet-head small"><h2>{esc(b.name)}</h2>'
+                      f'<p>{esc(t(lang, "doshas"))}</p></header>{_doshas_html(lang, cols)}{foot}</section>')
     if "KP_TABLES" in svgs:
         sheets.append(f'<section class="sheet kp-sheet"><header class="sheet-head small"><h2>{esc(b.name)}</h2>'
                       f'<p>KP</p></header><figure class="kp">{svgs["KP_TABLES"]}</figure>{foot}</section>')
-    body = toolbar("/horoscope", ui) + f'<div class="sheets" lang="{lang}">{"".join(sheets)}</div>'
+    pt = print_title(s, [b.name], t(lang, "horoscope"))
+    body = toolbar("/horoscope", ui) + f'<div class="sheets" lang="{lang}" data-print-title="{esc(pt)}">{"".join(sheets)}</div>'
     # generic title: names must not reach browser history, tab sync or any third-party script
     return layout(s, T(ui, "res_h"), body, active="horoscope", side_ad=False, ads=False, lang=ui)
+
+
+_FILENAME_BAD = re.compile(r'[\\/:*?"<>|\x00-\x1f]+')
+
+
+def print_title(s: Settings, names: list[str], what: str) -> str:
+    """File name offered by "Save as PDF": e.g. "Asha & Ravi - Marriage matching - AstroRealm".
+
+    Set on the page only while printing (site.js), so the generic tab title — and browser history — keep no names.
+    """
+    clean = lambda x: " ".join(_FILENAME_BAD.sub(" ", x or "").split())[:60]  # noqa: E731
+    who = " & ".join(n for n in (clean(n) for n in names) if n)
+    return " - ".join(x for x in (who, clean(what), clean(s.site_name)) if x)
 
 
 def _pair_grid(lang: str, frm: MatchForm, labels: dict[str, str], charts: dict, svgs: dict[str, str]) -> str:
@@ -664,8 +689,98 @@ def _pair_grid(lang: str, frm: MatchForm, labels: dict[str, str], charts: dict, 
     return f'<div class="pair">{"".join(cells)}</div>'
 
 
+def _one_sided_strong(v: dict) -> bool:
+    """Only one partner has it, and strongly — the case tradition treats as a real objection."""
+    return v["result"] == "ONE_SIDED" and v[v["who"]]["status"] == "STRONG"
+
+
+def _doshas_html(lang: str, cols: list[tuple[str, dict, dict]], mang_pairs: dict | None = None,
+                 rahu_pair: dict | None = None) -> str:
+    """Chevvai/Manglik under the South and North rules, then Rahu/Ketu in the 7th.
+
+    cols: one (header, {"south": assessment, "north": assessment}, rahu_assessment) per person — bride first.
+    mang_pairs / rahu_pair: the pair verdicts (matching page only).
+    """
+    L = i18n.get(lang)
+    sign = lambda name: L["rashi"].get(name, name)  # noqa: E731
+    planet = lambda name: L["planet"].get(name, name)  # noqa: E731
+    ref = lambda k: t(lang, "ref_lagna") if k in ("lagna", "Lagna") else planet(k.title())  # noqa: E731
+
+    def who(w):
+        name = t(lang, {"boy": "groom", "girl": "bride"}[w])
+        return name.lower() if lang == "en" else name
+
+    def factor_text(f):
+        p = dict(f["params"])
+        if "sign" in p:
+            p["sign"] = sign(p["sign"])
+        for k in ("lord", "planet", "node"):
+            if k in p:
+                p[k] = planet(p[k])
+        if "ref" in p:
+            p["ref"] = ref(p["ref"])
+        if "refs" in p:
+            p["refs"] = " / ".join(ref(x) for x in p["refs"].split(" / "))
+        return t(lang, "f_" + f["code"], **p)
+
+    def factors(person):
+        items = "".join(f'<li><span class="eff eff-{esc(f["effect"])}">{esc(t(lang, "e_" + f["effect"]))}</span> '
+                        f'{esc(factor_text(f))}</li>' for f in person["factors"])
+        return f'<ul class="factors">{items}</ul>' if items else "—"
+
+    def table(first_label, first, people):
+        def row(label, fn, cls=lambda p: ""):
+            return f'<tr><th>{esc(label)}</th>' + "".join(f"<td{cls(p)}>{fn(p)}</td>" for p in people) + "</tr>"
+        status_cls = lambda p: f' class="ds ds-{esc(p["status"])}"'  # noqa: E731
+        heads = "".join(f"<th>{esc(h)}</th>" for h, _, _ in cols)
+        return (f'<table class="grid dosha n{len(people)}"><thead><tr><th></th>{heads}</tr></thead><tbody>'
+                + row(first_label, first)
+                + row(t(lang, "result"), lambda p: esc(t(lang, "d_" + p["status"])), status_cls)
+                + row(t(lang, "why"), factors) + "</tbody></table>")
+
+    def verdict(key, res, strong=False):
+        if not res:
+            return ""
+        label = t(lang, key + res["result"], who=who(res["who"]) if res.get("who") else "")
+        cls = "dv-STRONG" if strong else f'dv-{esc(res["result"])}'
+        return f'<p class="verdict {cls}">{esc(t(lang, "result"))}: <b>{esc(label)}</b></p>'
+
+    def mars_where(p):
+        parts = []
+        for k, h in p["houses"].items():
+            text = esc(t(lang, "house_from", n=h, ref=ref(k)))
+            parts.append(f"<b>{text}</b>" if k in p["presentFrom"] else text)
+        return f'{esc(sign(p["mars"]["rashi"]))} · ' + "; ".join(parts)
+
+    def node_where(p):
+        if not p["seventh"]:
+            return esc(t(lang, "rk_none"))
+        return "; ".join(esc(t(lang, "rk_in7", node=planet(e["node"]), ref=ref(e["ref"]))) for e in p["seventh"])
+
+    blocks = []
+    for key in ("south", "north"):
+        v = (mang_pairs or {}).get(key)
+        blocks.append(f'<h4>{esc(t(lang, "mg_" + key))}</h4><p class="small">{esc(t(lang, "mg_" + key + "_how"))}</p>'
+                      + table(planet("Mars"), mars_where, [m[key] for _, m, _ in cols])
+                      + verdict("mp_", v, bool(v) and _one_sided_strong(v)))
+    rk = (f'<section class="block"><h3>{esc(t(lang, "rk_title"))}</h3><p class="small">{esc(t(lang, "rk_how"))}</p>'
+          + table(planet("Rahu") + " / " + planet("Ketu"), node_where, [r for _, _, r in cols])
+          + verdict("np_", rahu_pair) + "</section>")
+    return (f'<section class="block"><h3>{esc(t(lang, "mg_title"))}</h3>{"".join(blocks)}</section>{rk}'
+            f'<p class="small dosha-note">{esc(t(lang, "dosha_note"))}</p>')
+
+
+def _dosha_sheet(lang: str, mang: dict, rahu: dict) -> str:
+    """Matching page: bride left, groom right, with the pair verdicts."""
+    md, rd = mang["details"], rahu["details"]
+    cols = [(t(lang, "bride"), {k: md[k]["girl"] for k in ("south", "north")}, rd["girl"]),
+            (t(lang, "groom"), {k: md[k]["boy"] for k in ("south", "north")}, rd["boy"])]
+    return _doshas_html(lang, cols, {k: md[k] for k in ("south", "north")},
+                        {"result": rahu["result"], "who": rd["who"]})
+
+
 def match_result(s: Settings, frm: MatchForm, labels: dict[str, str], charts: dict, svgs: dict[str, str],
-                 ashta: dict, poru: dict, ui: str = "en") -> str:
+                 ashta: dict, poru: dict, ui: str = "en", mang: dict | None = None, rahu: dict | None = None) -> str:
     lang = frm.lang
     en = lang == "en"
     # bride first (left), groom second (right) — always
@@ -712,7 +827,11 @@ def match_result(s: Settings, frm: MatchForm, labels: dict[str, str], charts: di
 {pair}{foot}</section>"""
               f"""<section class="sheet"><header class="sheet-head small"><h2>{esc(title)}</h2></header>
 {ashta_html}{poru_html}{foot}</section>""")
-    body = toolbar("/match", ui) + f'<div class="sheets" lang="{lang}">{sheets}</div>'
+    if mang and rahu:
+        sheets += (f'<section class="sheet doshas"><header class="sheet-head small"><h2>{esc(t(lang, "doshas"))} · '
+                   f'{esc(title)}</h2></header>{_dosha_sheet(lang, mang, rahu)}{foot}</section>')
+    pt = print_title(s, [frm.bride.name, frm.groom.name], t(lang, "matching"))
+    body = toolbar("/match", ui) + f'<div class="sheets" lang="{lang}" data-print-title="{esc(pt)}">{sheets}</div>'
     return layout(s, T(ui, "res_m"), body, active="match", side_ad=False, ads=False, lang=ui)
 
 
@@ -892,16 +1011,6 @@ def not_found(s: Settings, lang: str = "en") -> str:
 
 # ------------------------------------------------------------------ roadmap
 UPCOMING = [  # (status key, {lang: (title, description)})
-    ("st_review", {
-        "en": ("Manglik (Chevvai) dosham check",
-               "Shows whether Mars causes dosham for the bride and the groom, and whether it is cancelled. The "
-               "cancellation rules are being checked with an astrologer before this appears in matching."),
-        "ta": ("செவ்வாய் தோஷம்",
-               "மணமகள், மணமகன் ஜாதகங்களில் செவ்வாய் தோஷம் உள்ளதா, அது நிவர்த்தி ஆகிறதா என்பதைக் காட்டும். நிவர்த்தி "
-               "விதிகள் ஜோதிடருடன் சரிபார்க்கப்பட்டு வருகின்றன."),
-        "hi": ("मांगलिक दोष (मंगल दोष)",
-               "वर और वधू की कुंडली में मंगल दोष है या नहीं, और क्या वह रद्द होता है — यह दिखाएगा। रद्द होने के नियम "
-               "ज्योतिषी के साथ जाँचे जा रहे हैं।")}),
     ("st_review", {
         "en": ("KP 7th cusp analysis",
                "Marriage matching through the 7th house cusp in KP astrology: its sub-lord and the houses it signifies. "

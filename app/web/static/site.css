@@ -312,3 +312,27 @@ a.button.primary { background: var(--accent); border-color: var(--accent); color
   .site-head > nav { order: 3; width: 100%; }
   .head-tools { order: 2; }
 }
+
+/* doshas sheet */
+.sheet h4 { margin: 1.5mm 0 0.3mm; font-size: 8.5pt; }
+.doshas .small { font-size: 7pt; line-height: 1.25; }
+.doshas .block { margin-bottom: 2mm; }
+.doshas .verdict { margin: 1mm 0; font-size: 8pt; }
+.sheet h4 + .small { margin: 0 0 1mm; }
+.sheet .dosha { width: 100%; table-layout: fixed; font-size: 7.5pt; }
+.sheet .dosha th:first-child { width: 17%; }
+.sheet .dosha td { vertical-align: top; }
+.factors { margin: 0; padding-left: 3.5mm; }
+.factors li { margin: 0 0 0.4mm; }
+.eff { font-size: 6.5pt; text-transform: uppercase; letter-spacing: .02em; padding: 0 1mm; border-radius: 1mm;
+  background: #eef1f4; color: #3d4a5a; }
+.eff-CANCELS, .eff-LOWERS, .eff-REDUCES { background: #d8efe2; color: #14532d; }
+.eff-RAISES { background: #f8d9d6; color: #8c1d18; }
+.ds { font-weight: 600; }
+.ds-STRONG { color: #b3261e; }
+.ds-MILD { color: #9a6a00; }
+.ds-CANCELLED, .ds-NONE { color: #1f7a4d; }
+.dv-STRONG b { color: #b3261e; }
+.dv-ONE_SIDED b, .dv-PARTLY_BALANCED b { color: #9a6a00; }
+.dv-NO_DOSHA b, .dv-CANCELLED b, .dv-MUTUAL b, .dv-SHARED b { color: #1f7a4d; }
+.dosha-note { margin-top: 2mm; }

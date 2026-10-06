@@ -17,7 +17,7 @@ MATCH_EXAMPLES = {
         "value": {
             "personA": _BY_PLACE,
             "personB": _BY_COORDS,
-            "options": {"ayanamsa": "LAHIRI", "methods": ["ASHTAKOOTA", "PORUTHAM", "MANGLIK", "KP_7TH_CUSP"],
+            "options": {"ayanamsa": "LAHIRI", "methods": ["ASHTAKOOTA", "PORUTHAM", "MANGLIK", "RAHU_KETU", "KP_7TH_CUSP"],
                         "positions": "TRUE"},
         },
     },
@@ -34,7 +34,7 @@ MATCH_EXAMPLES = {
         "value": {
             "personA": _WITH_OFFSET,
             "personB": {**_BY_COORDS, "dob": "1955-08-21"},
-            "options": {"ayanamsa": "LAHIRI", "methods": ["ASHTAKOOTA", "PORUTHAM", "MANGLIK", "KP_7TH_CUSP"]},
+            "options": {"ayanamsa": "LAHIRI", "methods": ["ASHTAKOOTA", "PORUTHAM", "MANGLIK", "RAHU_KETU", "KP_7TH_CUSP"]},
         },
     },
 }

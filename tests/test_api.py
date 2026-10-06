@@ -19,7 +19,7 @@ def test_match_all_methods():
     r = client.post("/v1/match", json={"personA": BOY, "personB": GIRL})
     assert r.status_code == 200, r.text
     body = r.json()
-    assert set(body) >= {"boy", "girl", "ashtakoota", "porutham", "manglik", "kp7thCusp"}
+    assert set(body) >= {"boy", "girl", "ashtakoota", "porutham", "manglik", "rahuKetu", "kp7thCusp"}
     assert body["girl"]["birth"]["resolvedPlace"]["name"] == "Madurai"
     assert body["boy"]["birth"]["timezone"] == "Asia/Kolkata"
     assert body["porutham"]["score"]["strict"]["of"] == 12

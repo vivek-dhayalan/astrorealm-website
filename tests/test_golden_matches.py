@@ -50,8 +50,9 @@ def test_golden_match(case):
     if "manglik" in verified:
         m, em = r["manglik"], sw["manglik"]
         assert m["result"] == em["result"]
-        assert m["details"]["boy"]["status"] == em["boy"]
-        assert m["details"]["girl"]["status"] == em["girl"]
+        legacy = {"HIGH": "STRONG", "LOW": "MILD"}  # fixture written with the old status names
+        assert m["details"]["south"]["boy"]["status"] == legacy.get(em["boy"], em["boy"])
+        assert m["details"]["south"]["girl"]["status"] == legacy.get(em["girl"], em["girl"])
     if "kp7thCusp" in verified:
         k, ek = r["kp7thCusp"], sw["kp7thCusp"]
         assert k["result"] == ek["result"]

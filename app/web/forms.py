@@ -12,7 +12,7 @@ from .sanitize import clean_html
 from .strings import LANGS
 
 MAX_BODY = 64 * 1024
-CHART_PARTS = ("RASI", "NAVAMSA", "KP_TABLES")
+CHART_PARTS = ("RASI", "NAVAMSA", "KP_TABLES", "DOSHAS")
 DEFAULT_PARTS = ("RASI", "NAVAMSA")
 
 

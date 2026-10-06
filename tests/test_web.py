@@ -1,7 +1,9 @@
 """Website: sanitizer, forms, labels, rendering order, rate limit (no FastAPI needed)."""
+import pytest
+
 from app.render import i18n
 from app.service import ResolvedPerson
-from app.matching import ashtakoota, porutham
+from app.matching import ashtakoota, manglik, nodes, porutham
 from app.render import svg
 from app.web import strings, views
 from app.web.forms import HoroscopeForm, MatchForm, parse_body
@@ -73,7 +75,10 @@ def _match_html(lang="en"):
     svgs = {r: svg.grid_svg(c, lang, "RASI", degrees=False) for r, c in charts.items()}
     a = ashtakoota.match(charts["groom"], charts["bride"])
     p = porutham.match(charts["groom"], charts["bride"])
-    return views.match_result(Settings(), frm, {"bride": "Coimbatore", "groom": "Puducherry"}, charts, svgs, a, p)
+    m = manglik.match(charts["groom"], charts["bride"])
+    r = nodes.match(charts["groom"], charts["bride"])
+    return views.match_result(Settings(), frm, {"bride": "Coimbatore", "groom": "Puducherry"}, charts, svgs, a, p,
+                              mang=m, rahu=r)
 
 
 def test_match_page_puts_bride_left_and_escapes_names():
@@ -84,7 +89,19 @@ def test_match_page_puts_bride_left_and_escapes_names():
     assert html.index('class="chart bride"') > html.rindex('class="k g"')
     assert "Bride&lt;script&gt;" in html and "<script>alert" not in html
     assert "Ashtakoota" in html and "Porutham" in html
-    assert "KP_7TH" not in html and "Manglik" not in html
+    assert "KP_7TH" not in html
+
+
+@pytest.mark.parametrize("lang", ["en", "ta", "te", "ml", "kn", "hi"])
+def test_match_page_shows_both_dosha_traditions_and_rahu_ketu(lang):
+    from app.web.strings import t
+    html = _match_html(lang)
+    sheet = html[html.index('class="sheet doshas"'):]
+    for key in ("mg_south", "mg_north", "rk_title", "dosha_note"):
+        assert t(lang, key) in sheet.replace("&amp;", "&"), key
+    assert sheet.count('class="grid dosha n2"') == 3
+    # bride column first in every dosha table
+    assert "{" not in sheet.split("</section>")[0]
 
 
 def test_match_page_localized():
@@ -141,7 +158,7 @@ def test_learn_pages_and_internal_links():
             for href in re.findall(r'href="(/[^"]*)"', a.body):
                 assert href in known, (lang, a.slug, href)
     for key, (_, _, href) in views.TIPS.items():
-        assert href.removeprefix("/learn/") in BY_SLUG, key
+        assert not href or href.removeprefix("/learn/") in BY_SLUG, key
 
 
 def test_tooltips_on_forms():
@@ -225,7 +242,8 @@ def test_footer_has_no_source_link_but_credits_does():
 
 def test_upcoming_page_lists_hidden_features():
     page = views.upcoming(Settings())
-    for name in ("Manglik", "KP 7th cusp", "Dasavidha"):
+    assert "Manglik" not in page  # live on the matching page now
+    for name in ("KP 7th cusp", "Dasavidha"):
         assert name in page
 
 
@@ -402,3 +420,31 @@ def test_free_only_in_titles_and_descriptions():
             visible = re.sub(r"<[^>]+>", " ", re.sub(r"<script.*?</script>", "", body, flags=re.S))
             assert not re.search(rf"\b{word}\b" if lang == "en" else word, visible, re.I), (lang, word)
         assert re.search(word, views.home(s, lang).split("</head>")[0], re.I)  # still in the title for search
+
+
+@pytest.mark.parametrize("lang", ["en", "ta", "kn"])
+def test_horoscope_dosha_page_only_when_selected(lang):
+    from app.matching import manglik as M, nodes as N
+    from app.web.strings import t
+    f = {"name": ["Asha"], "sex": ["F"], "dob": ["1995-03-23"], "tob": ["13:44"], "place": ["Coimbatore"],
+         "lat": ["11.00555"], "lon": ["76.96612"], "lang": [lang], "ayanamsa": ["KP"], "parts": ["RASI", "DOSHAS"]}
+    frm = HoroscopeForm.parse(f)
+    assert not frm.errors and "DOSHAS" in frm.parts
+    chart = ResolvedPerson(frm.birth.to_person()).chart(frm.ayanamsa)
+    svgs = {"RASI": svg.grid_svg(chart, lang, "RASI", degrees=False)}
+    d = {"manglik": {k.lower(): M.assess(chart, k) for k in M.TRADITIONS}, "rahuKetu": N.assess(chart)}
+    html = views.horoscope_result(Settings(), frm, "Coimbatore", chart, svgs, doshas=d)
+    sheet = html[html.index('class="sheet doshas'):]
+    assert t(lang, "mg_south") in sheet and t(lang, "mg_north") in sheet and t(lang, "rk_title") in sheet
+    assert sheet.count('class="grid dosha n1"') == 3 and 'class="verdict' not in sheet  # no pair verdicts
+    assert 'class="sheet doshas' not in views.horoscope_result(Settings(), frm, "Coimbatore", chart, svgs)
+    form = views.horoscope_form(Settings(), HoroscopeForm(), ui=lang)
+    assert 'value="DOSHAS"' in form and 'tip-doshas' in form
+
+
+def test_print_title_names_the_pdf_without_touching_the_tab_title():
+    html = _match_html()
+    assert 'data-print-title="Bride - Groom' not in html
+    assert 'data-print-title="Bride script &amp; Groom - Marriage matching - AstroRealm"' in html  # <> dropped
+    assert "<title>" in html and "Bride" not in html[html.index("<title>"):html.index("</title>")]
+    assert views.print_title(Settings(), ['A/B:"C"', ""], "Horoscope") == "A B C - Horoscope - AstroRealm"

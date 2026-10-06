@@ -7,7 +7,8 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Resp
 from ..core.ayanamsa import Ayanamsa
 from ..core.timeutil import InputError
 from ..geo import get_resolver
-from ..matching import ashtakoota, kp, porutham
+from ..matching import ashtakoota, kp, manglik, nodes, porutham
+from ..matching.manglik import TRADITIONS
 from ..render import svg
 from ..service import ResolvedPerson
 from . import refpages, stars, views
@@ -165,11 +166,16 @@ async def horoscope_submit(request: Request):
         if "KP_TABLES" in frm.parts:
             kc = rp.chart(Ayanamsa.KP)
             svgs["KP_TABLES"] = svg.kp_svg(kc, kp.planet_significations(kc), frm.lang, compact=True)
+        doshas = None
+        if "DOSHAS" in frm.parts:
+            doshas = {"manglik": {t.lower(): manglik.assess(chart, t) for t in TRADITIONS},
+                      "rahuKetu": nodes.assess(chart)}
     except InputError as exc:
         msg, cands = _input_error_message(exc)
         frm.errors["place" if "PLACE" in exc.code else "dob"] = msg
         return html(views.horoscope_form(s, frm, msg, cands, ui=ui), 422, private=True)
-    return html(views.horoscope_result(s, frm, _place_label(frm.birth, rp), chart, svgs, ui=ui), private=True)
+    return html(views.horoscope_result(s, frm, _place_label(frm.birth, rp), chart, svgs, ui=ui, doshas=doshas),
+                private=True)
 
 
 @router.post("/match", response_class=HTMLResponse)
@@ -200,7 +206,10 @@ async def match_submit(request: Request):
     # matchers take (boy, girl)
     ashta = ashtakoota.match(charts["groom"], charts["bride"])
     poru = porutham.match(charts["groom"], charts["bride"])
-    return html(views.match_result(s, frm, labels, charts, svgs, ashta, poru, ui=ui), private=True)
+    mang = manglik.match(charts["groom"], charts["bride"])
+    rahu = nodes.match(charts["groom"], charts["bride"])
+    return html(views.match_result(s, frm, labels, charts, svgs, ashta, poru, ui=ui, mang=mang, rahu=rahu),
+                private=True)
 
 
 def site_paths() -> list[str]:

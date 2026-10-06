@@ -140,12 +140,12 @@ _T: dict[str, tuple[str, str, str]] = {
                  "कुंडली मिलान (गुण मिलान और पोरुथम)"),
     "mform_lead": (
         'Enter the bride\'s details on the left and the groom\'s on the right. You get the 12 poruthams, the '
-        'Ashtakoota score out of 36, and both Rasi charts. Only know the birth stars? See the '
+        'Ashtakoota score out of 36, Chevvai/Manglik dosham, Rahu–Ketu, and both Rasi charts. Only know the birth stars? See the '
         '<a href="/learn/nakshatra-porutham-table">nakshatra porutham table</a>.',
         'மணமகளின் விவரங்களை இடப்புறமும் மணமகனின் விவரங்களை வலப்புறமும் உள்ளிடவும். 12 பொருத்தங்கள், 36-க்கு '
-        'அஷ்டகூட மதிப்பெண், இருவரின் ராசிக் கட்டங்கள் கிடைக்கும். நட்சத்திரம் மட்டும் தெரியுமா? '
+        'அஷ்டகூட மதிப்பெண், செவ்வாய் தோஷம், ராகு–கேது, இருவரின் ராசிக் கட்டங்கள் கிடைக்கும். நட்சத்திரம் மட்டும் தெரியுமா? '
         '<a href="/learn/nakshatra-porutham-table">நட்சத்திரப் பொருத்த அட்டவணையைப்</a> பார்க்கவும்.',
-        'वधू का विवरण बाईं ओर और वर का दाईं ओर भरें। आपको 12 पोरुथम, 36 में से अष्टकूट गुण और दोनों के राशि चार्ट '
+        'वधू का विवरण बाईं ओर और वर का दाईं ओर भरें। आपको 12 पोरुथम, 36 में से अष्टकूट गुण, मांगलिक दोष, राहु–केतु और दोनों के राशि चार्ट '
         'मिलेंगे। केवल जन्म नक्षत्र पता है? <a href="/learn/nakshatra-porutham-table">नक्षत्र मिलान तालिका</a> '
         'देखें।'),
     "form_note": ("",
@@ -274,13 +274,13 @@ PAGE_META = {
     "match": {
         "en": ("Marriage Matching by Birth Details – 10 Porutham & 36 Guna Milan | {site}",
                "Free horoscope matching for marriage: Thirumana Porutham (10/12 poruthams, Rajju, Nadi, Vedha) and "
-               "Ashtakoota Guna Milan out of 36, with the bride's and groom's Rasi charts side by side."),
+               "Ashtakoota Guna Milan out of 36, Chevvai/Manglik dosham and Rahu–Ketu, with both Rasi charts side by side."),
         "ta": ("திருமணப் பொருத்தம் ஆன்லைன் – 10 பொருத்தம், ரஜ்ஜு, நாடி | {site}",
                "மணமகள், மணமகன் பிறப்பு விவரங்களைக் கொண்டு இலவசத் திருமணப் பொருத்தம்: 12 பொருத்தங்கள் (ரஜ்ஜு, "
-               "நாடி, வேதை உட்பட), 36-க்கு அஷ்டகூட மதிப்பெண், இருவரின் ராசிக் கட்டங்கள்."),
+               "நாடி, வேதை உட்பட), 36-க்கு அஷ்டகூட மதிப்பெண், செவ்வாய் தோஷம், ராகு–கேது, இருவரின் ராசிக் கட்டங்கள்."),
         "hi": ("कुंडली मिलान ऑनलाइन – 36 गुण मिलान और पोरुथम | {site}",
                "वर और वधू के जन्म विवरण से मुफ़्त कुंडली मिलान: अष्टकूट के 36 में से गुण, नाड़ी, भकूट और गण दोष, "
-               "12 पोरुथम और दोनों के राशि चार्ट।"),
+               "12 पोरुथम, मांगलिक दोष, राहु–केतु और दोनों के राशि चार्ट।"),
     },
     "learn": {
         "en": ("Learn Vedic Astrology: Porutham, Guna Milan, Nakshatras & Rasis | {site}",
@@ -319,14 +319,14 @@ PAGE_META = {
         "hi": ("उपयोग की शर्तें | {site}", "{site} के मुफ़्त कुंडली और कुंडली मिलान टूल के उपयोग की शर्तें।"),
     },
     "upcoming": {
-        "en": ("Coming Soon: Manglik Dosha, KP Matching and More | {site}",
-               "Features in progress on {site}: Manglik (Chevvai) dosham, KP 7th cusp and Dasavidha Porutham "
-               "matching, templates and sharing."),
-        "ta": ("விரைவில்: செவ்வாய் தோஷம், KP பொருத்தம் மற்றும் பல | {site}",
-               "{site}-இல் வரவிருக்கும் வசதிகள்: செவ்வாய் தோஷம், KP 7-ஆம் பாவம், தசவித பொருத்தம், "
+        "en": ("Coming Soon: KP Matching, Templates and More | {site}",
+               "Features in progress on {site}: KP 7th cusp and Dasavidha Porutham matching, more matching methods, "
+               "templates and sharing."),
+        "ta": ("விரைவில்: KP பொருத்தம், வடிவமைப்புகள் மற்றும் பல | {site}",
+               "{site}-இல் வரவிருக்கும் வசதிகள்: KP 7-ஆம் பாவம், தசவித பொருத்தம், "
                "வடிவமைப்புகள், பகிர்வு."),
-        "hi": ("जल्द आ रहा है: मांगलिक दोष, KP मिलान और बहुत कुछ | {site}",
-               "{site} पर आने वाली सुविधाएँ: मांगलिक दोष, KP सप्तम भाव और दशविध पोरुथम मिलान, "
+        "hi": ("जल्द आ रहा है: KP मिलान, टेम्पलेट और बहुत कुछ | {site}",
+               "{site} पर आने वाली सुविधाएँ: KP सप्तम भाव और दशविध पोरुथम मिलान, "
                "टेम्पलेट और शेयरिंग।"),
     },
 }

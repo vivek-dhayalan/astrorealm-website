@@ -7,7 +7,8 @@ independently:
 |---|---|---|
 | Ashtakoota (36 gunas) | `ashtakoota` | `ADHAMAM` <18 · `MADHYAMAM` 18–24 · `UTTAMAM` 25–32 · `ATI_UTTAMAM` 33–36 |
 | Porutham (12, incl. Varna & Nadi) | `porutham` | strict & lenient views: `REJECTED` (Nadi/Vedha fails) · `UTTAMAM` (Rajju, Varna, Nadi, Rasi, Rasyadhipathi, Stree Deergha all match) · `MADHYAMAM` (Rajju matches) · `ADHAMAM` |
-| Mangal dosha | `manglik` | per person `NONE/LOW/HIGH/CANCELLED`; pair `NO_DOSHA/MUTUAL/CANCELLED/MISMATCH` |
+| Mangal (Chevvai/Manglik) dosha | `manglik` | two rule sets, `details.south` and `details.north` (top-level `result` = South). Per person `NONE/MILD/STRONG/CANCELLED` with the factors that raised, lowered, reduced or cancelled it; pair `NO_DOSHA/CANCELLED/MUTUAL/PARTLY_BALANCED/ONE_SIDED` |
+| Rahu/Ketu in the 7th (advisory) | `rahuKetu` | per person `NONE/MILD/STRONG` + Kala Sarpa note; pair `NO_DOSHA/SHARED/ONE_SIDED` |
 | KP 7th-cusp sub-lord | `kp7thCusp` | per person `STRONG/PROMISED/MIXED/DENIED`; pair `BOTH_PROMISED/ONE_DENIED/BOTH_DENIED/INCONCLUSIVE` |
 
 There is no combined verdict. Both people's nakshatra, pada, rashi and lagna are always returned.
@@ -18,8 +19,9 @@ The same app serves the free public website **AstroRealm** (server-rendered, not
 
 * `/horoscope` — birth details (place search or map pin), family and personal details, a rich-text description,
   output language and ayanamsa → a printable **A5** biodata with Rasi/Navamsa charts (KP tables optional).
-* `/match` — bride (left) and groom (right) → Ashtakoota and Porutham with both Rasi charts, printable on A5.
-  Manglik and KP 7th cusp are hidden on the site until their rules are confirmed (still in the API).
+* `/match` — bride (left) and groom (right) → Ashtakoota and Porutham with both Rasi charts, then a doshas page:
+  Chevvai/Manglik under both the South and North Indian rules, and Rahu/Ketu in the 7th. Printable on A5.
+  KP 7th cusp is hidden on the site until its rules are confirmed (still in the API).
 * `/credits`, `/privacy`, `/terms`.
 
 Output languages: English, Tamil, Telugu, Malayalam, Kannada, Hindi. The form itself is in English.
@@ -54,7 +56,7 @@ repository root — in Cloud Shell, clone it first:
 
 ```bash
 git clone https://github.com/vivek-dhayalan/astrorealm-website.git && cd astrorealm-website
-PROJECT=astrorealm-in            # your project id (also put it in .firebaserc)
+PROJECT=astrorealm-510714           # your project id (also put it in .firebaserc)
 REPO=vivek-dhayalan/astrorealm-website
 gcloud config set project $PROJECT
 NUMBER=$(gcloud projects describe $PROJECT --format='value(projectNumber)')
@@ -160,7 +162,7 @@ POST /v1/match
 {
   "personA": { "sex": "M", "dob": "1991-09-23", "tob": "06:30 AM", "lat": 13.0827, "lon": 80.2707 },
   "personB": { "sex": "F", "dob": "1992-11-02", "tob": "21:10", "place": "Madurai, Tamil Nadu" },
-  "options": { "ayanamsa": "LAHIRI", "methods": ["ASHTAKOOTA", "PORUTHAM", "MANGLIK", "KP_7TH_CUSP"] }
+  "options": { "ayanamsa": "LAHIRI", "methods": ["ASHTAKOOTA", "PORUTHAM", "MANGLIK", "RAHU_KETU", "KP_7TH_CUSP"] }
 }
 ```
 
@@ -210,7 +212,8 @@ boundary, or the KP 7th-cusp sub-lord changes within ±5 minutes of the birth ti
 
 Marked `VERIFY` in `app/rules/v1.py`: the Vashya score table, Dina partial for same nakshatra,
 Stree Deergha partial range (8–13), Rasi porutham counts (1, 7, 9, 10, 11 match; 12 partial).
-Also worth confirming: Mangal dosha houses (1, 2, 4, 7, 8, 12) and cancellations, and KP node handling
+Also worth confirming: the Mangal dosha rule sets (`MANGLIK_TRADITIONS`: houses, reference points, cancellations,
+house weights), the Rahu/Ketu grading (`NODE_*`), and KP node handling
 (nodes take their sign lord's houses).
 
 ## Tests
