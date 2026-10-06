@@ -337,7 +337,7 @@ def test_star_table_agrees_with_the_matcher():
 def test_form_language_preselect():
     page = views.horoscope_form(Settings(), HoroscopeForm(lang="ta"), ui="ta")
     assert 'value="ta" selected' in page and 'name="ui" value="ta"' in page
-    assert "Name" in page and "இலவச ஜாதகம்" in page  # form labels stay English, the page around it is Tamil
+    assert "Name" in page and "உங்கள் ஜாதகம் கணிக்க" in page  # form labels stay English, the page around it is Tamil
 
 
 def test_ui_strings_complete():
@@ -370,3 +370,15 @@ def test_browser_language_redirect_script():
     assert "navigator.languages" in head and 'localStorage.getItem("lang")' in head
     # not on result or error pages (no path), so a POST result is never redirected
     assert "navigator.languages" not in views.error_page(Settings(), "x", "y")
+
+
+def test_free_only_in_titles_and_descriptions():
+    import re
+    s = Settings()
+    for lang, word in (("en", "free"), ("ta", "இலவச"), ("hi", "मुफ़्त")):
+        for page in (views.home(s, lang), views.horoscope_form(s, HoroscopeForm(), ui=lang),
+                     views.match_form(s, MatchForm(), ui=lang)):
+            body = re.sub(r"<head>.*?</head>", "", page, flags=re.S)
+            visible = re.sub(r"<[^>]+>", " ", re.sub(r"<script.*?</script>", "", body, flags=re.S))
+            assert not re.search(rf"\b{word}\b" if lang == "en" else word, visible, re.I), (lang, word)
+        assert re.search(word, views.home(s, lang).split("</head>")[0], re.I)  # still in the title for search

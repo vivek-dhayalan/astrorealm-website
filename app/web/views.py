@@ -296,7 +296,7 @@ TIPS = {
     "KP_TABLES": ("What are the KP tables?",
                   "Krishnamurti Paddhati tables: for every planet and house cusp, the sign lord, star (nakshatra) "
                   "lord, sub lord and finer sub-sub levels, plus the houses each one signifies. Always calculated "
-                  "with the KP ayanamsa. Prints on a second A5 page.", "/learn/kp-astrology"),
+                  "with the KP ayanamsa. Prints as a separate page.", "/learn/kp-astrology"),
 }
 
 

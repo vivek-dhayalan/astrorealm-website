@@ -54,9 +54,9 @@ _T: dict[str, tuple[str, str, str]] = {
     "nav_learn": ("Learn", "கற்க", "जानें"),
     "nav_credits": ("Credits", "நன்றி", "आभार"),
     "skip": ("Skip to content", "உள்ளடக்கத்திற்குச் செல்ல", "सामग्री पर जाएँ"),
-    "foot_disclaimer": ("Free to use. For guidance only — consult an astrologer before taking decisions.",
-                        "இலவசம். வழிகாட்டுதலுக்கு மட்டுமே — முடிவெடுக்கும் முன் ஜோதிடரை அணுகவும்.",
-                        "मुफ़्त। केवल मार्गदर्शन के लिए — निर्णय लेने से पहले ज्योतिषी से सलाह लें।"),
+    "foot_disclaimer": ("For guidance only — consult an astrologer before taking decisions.",
+                        "வழிகாட்டுதலுக்கு மட்டுமே — முடிவெடுக்கும் முன் ஜோதிடரை அணுகவும்.",
+                        "केवल मार्गदर्शन के लिए — निर्णय लेने से पहले ज्योतिषी से सलाह लें।"),
     "foot_privacy": ("Privacy", "தனியுரிமை", "गोपनीयता"),
     "foot_terms": ("Terms", "விதிமுறைகள்", "नियम"),
     "foot_upcoming": ("Coming soon", "விரைவில்", "जल्द आ रहा है"),
@@ -81,22 +81,27 @@ _T: dict[str, tuple[str, str, str]] = {
     "theme_dark": ("Dark", "இருள்", "गहरा"),
 
     # home
-    "home_h1": ("Free horoscope and marriage matching", "இலவச ஜாதகம் மற்றும் திருமணப் பொருத்தம்",
-                "मुफ़्त कुंडली और कुंडली मिलान"),
+    # Page copy speaks to quality; "free" is kept for page titles and search descriptions only (PAGE_META)
+    "home_h1": ("Your horoscope and marriage matching, the traditional way",
+                "பாரம்பரிய முறையில் ஜாதகமும் திருமணப் பொருத்தமும்",
+                "पारंपरिक पद्धति से कुंडली और कुंडली मिलान"),
     "home_intro": (
-        "South Indian charts, Ashtakoota and 12-porutham matching, printed in English, தமிழ், తెలుగు, മലയാളം, "
-        "ಕನ್ನಡ or हिन्दी. Nothing you enter is saved.",
-        "தென்னிந்திய முறையில் ராசி, நவாம்சக் கட்டங்களுடன் ஜாதகம்; 10 பொருத்தம் (வர்ணம், நாடி சேர்த்து 12) மற்றும் "
-        "அஷ்டகூடப் பொருத்தம் (36 புள்ளிகள்). முடிவுகளைத் தமிழிலேயே A5 அளவில் அச்சிடலாம். நீங்கள் உள்ளிடும் "
-        "விவரங்கள் எதுவும் சேமிக்கப்படுவதில்லை.",
-        "जन्म तिथि, समय और स्थान से राशि व नवांश चार्ट वाली कुंडली बनाएँ, और विवाह के लिए अष्टकूट गुण मिलान "
-        "(36 गुण) तथा दक्षिण भारत की 12 पोरुथम जाँच देखें। परिणाम हिंदी में A5 आकार पर प्रिंट किए जा सकते हैं। "
-        "चार्ट दक्षिण भारतीय शैली में बनते हैं। आपकी दी हुई कोई भी जानकारी सहेजी नहीं जाती।"),
+        "South Indian Rasi and Navamsa charts calculated with the Swiss Ephemeris, and matching by Porutham and "
+        "Ashtakoota — checked against an astrologer's own results. Your horoscope comes as a neatly formatted page in "
+        "English, தமிழ், తెలుగు, മലയാളം, ಕನ್ನಡ or हिन्दी, and nothing you enter is ever stored.",
+        "Swiss Ephemeris கணக்கீட்டில் தென்னிந்திய முறை ராசி, நவாம்சக் கட்டங்கள்; 10 பொருத்தம் (வர்ணம், நாடி "
+        "சேர்த்து 12), அஷ்டகூடம் (36 புள்ளிகள்) — ஜோதிடரின் கணிப்புகளுடன் சரிபார்க்கப்பட்டவை. உங்கள் ஜாதகம் "
+        "தமிழிலேயே நேர்த்தியான வடிவில் கிடைக்கும்; நீங்கள் உள்ளிடும் விவரங்கள் எதுவும் சேமிக்கப்படுவதில்லை.",
+        "Swiss Ephemeris की सटीक गणना से दक्षिण भारतीय शैली के राशि और नवांश चार्ट, और अष्टकूट गुण मिलान (36 गुण) "
+        "व 12 पोरुथम जाँच — ज्योतिषी के परिणामों से मिलाकर परखी गई। आपकी कुंडली हिंदी में सुव्यवस्थित, सुंदर रूप "
+        "में मिलती है, और आपकी दी हुई कोई भी जानकारी सहेजी नहीं जाती।"),
     "card_h": ("Horoscope", "ஜாதகம் கணிக்க", "कुंडली बनाएँ"),
-    "card_h_desc": ("Rasi and Navamsa charts with your family and personal details, ready to print on A5.",
+    "card_h_desc": ("Rasi and Navamsa charts with your family and personal details, laid out as an elegant "
+                    "horoscope you can print or share.",
                     "பிறந்த தேதி, நேரம், ஊர் கொடுத்தால் ராசி, நவாம்சக் கட்டங்கள், கோத்திரம், குடும்ப விவரங்களுடன் "
-                    "ஜாதகம் தயார்.",
-                    "राशि और नवांश चार्ट, परिवार और व्यक्तिगत विवरण के साथ — A5 पर प्रिंट के लिए तैयार।"),
+                    "நேர்த்தியாக வடிவமைக்கப்பட்ட ஜாதகம்.",
+                    "राशि और नवांश चार्ट, परिवार और व्यक्तिगत विवरण के साथ — सुंदर ढंग से सजी कुंडली, जिसे आप प्रिंट "
+                    "या साझा कर सकते हैं।"),
     "card_m": ("Marriage matching", "திருமணப் பொருத்தம்", "कुंडली मिलान"),
     "card_m_desc": ("Ashtakoota (36 gunas) and Porutham for a bride and groom, with both Rasi charts.",
                     "மணமகள், மணமகன் இருவரின் பிறப்பு விவரங்களைக் கொண்டு 12 பொருத்தங்களும் அஷ்டகூட மதிப்பெண்ணும், "
@@ -121,14 +126,15 @@ _T: dict[str, tuple[str, str, str]] = {
     "rasis_h": ("The 12 rasis", "12 ராசிகள்", "12 राशियाँ"),
 
     # form pages (the forms themselves stay in English)
-    "hform_h1": ("Free horoscope (jathagam)", "இலவச ஜாதகம்", "मुफ़्त कुंडली (जन्मपत्री)"),
+    "hform_h1": ("Create your horoscope (jathagam)", "உங்கள் ஜாதகம் கணிக்க", "अपनी कुंडली (जन्मपत्री) बनाएँ"),
     "hform_lead": (
-        "Fill in the birth details. Only the starred fields are required. You get the Rasi and Navamsa charts with "
-        "the details you choose, ready to print on A5 in English, Tamil, Telugu, Malayalam, Kannada or Hindi.",
+        "Fill in the birth details — only the starred fields are required. You get a well-formatted horoscope with "
+        "the Rasi and Navamsa charts and the details you choose, in English, Tamil, Telugu, Malayalam, Kannada or "
+        "Hindi.",
         "பிறப்பு விவரங்களை நிரப்பவும்; நட்சத்திரக் குறியிட்ட புலங்கள் மட்டுமே கட்டாயம். நீங்கள் தேர்ந்தெடுக்கும் "
-        "விவரங்களுடன் ராசி, நவாம்சக் கட்டங்கள் A5 அளவில் அச்சிடத் தயாராக வரும் — தமிழ் உட்பட ஆறு மொழிகளில்.",
-        "जन्म विवरण भरें; केवल तारांकित फ़ील्ड ज़रूरी हैं। आपको चुने गए विवरणों के साथ राशि और नवांश चार्ट मिलते "
-        "हैं, जो हिंदी सहित छह भाषाओं में A5 पर प्रिंट के लिए तैयार हैं।"),
+        "விவரங்களுடன் ராசி, நவாம்சக் கட்டங்கள் கொண்ட நேர்த்தியான ஜாதகம் கிடைக்கும் — தமிழ் உட்பட ஆறு மொழிகளில்.",
+        "जन्म विवरण भरें; केवल तारांकित फ़ील्ड ज़रूरी हैं। आपको चुने गए विवरणों के साथ राशि और नवांश चार्ट वाली "
+        "सुव्यवस्थित कुंडली मिलती है — हिंदी सहित छह भाषाओं में।"),
     "mform_h1": ("Marriage matching (Porutham and Guna Milan)", "திருமணப் பொருத்தம் (10 பொருத்தம், அஷ்டகூடம்)",
                  "कुंडली मिलान (गुण मिलान और पोरुथम)"),
     "mform_lead": (
@@ -241,13 +247,13 @@ PAGE_META = {
     "horoscope": {
         "en": ("Free Jathagam / Horoscope Online – Rasi & Navamsa Chart | {site}",
                "Generate a free South Indian horoscope (jathagam) with Rasi and Navamsa charts, family details and "
-               "optional KP tables. Lahiri or KP ayanamsa. Print on A5 in six Indian languages."),
+               "optional KP tables. Lahiri or KP ayanamsa. A beautifully formatted, printable horoscope in six languages."),
         "ta": ("இலவச ஜாதகம் ஆன்லைன் – ராசி, நவாம்சக் கட்டம் | {site}",
                "இலவசமாகத் தென்னிந்திய ஜாதகம் கணிக்கவும்: ராசி, நவாம்சக் கட்டங்கள், குடும்ப விவரங்கள், விருப்பமான "
-               "KP அட்டவணைகள். லாகிரி அல்லது KP அயனாம்சம். தமிழில் A5 அளவில் அச்சிடலாம்."),
+               "KP அட்டவணைகள். லாகிரி அல்லது KP அயனாம்சம். தமிழில் நேர்த்தியான, அச்சிடக்கூடிய ஜாதகம்."),
         "hi": ("मुफ़्त जन्म कुंडली ऑनलाइन – राशि और नवांश चार्ट | {site}",
                "मुफ़्त दक्षिण भारतीय जन्म कुंडली बनाएँ: राशि और नवांश चार्ट, परिवार का विवरण और वैकल्पिक KP "
-               "तालिकाएँ। लाहिड़ी या KP अयनांश। हिंदी में A5 पर प्रिंट करें।"),
+               "तालिकाएँ। लाहिड़ी या KP अयनांश। हिंदी में सुव्यवस्थित, प्रिंट करने योग्य कुंडली।"),
     },
     "match": {
         "en": ("Marriage Matching by Birth Details – 10 Porutham & 36 Guna Milan | {site}",
