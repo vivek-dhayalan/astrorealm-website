@@ -42,7 +42,7 @@ def analytics_tags(measurement_id: str) -> str:
 
 
 TURNSTILE_JS = '<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>'
-STATIC_VERSION = "6"
+STATIC_VERSION = "8"
 
 
 def esc(v) -> str:
@@ -73,9 +73,44 @@ def lang_switch(current: str, path: str) -> str:
         f'<li><a hreflang="{code}" href="{lpath(code, path)}" lang="{code}"'
         f'{" aria-current=" + chr(34) + "true" + chr(34) if code == current else ""}>{LANG_LABEL[code]}</a></li>'
         for code in SITE_LANGS)
-    return (f'<details class="lang-menu"><summary aria-label="{esc(T(current, "language"))}: {LANG_LABEL[current]}">'
+    return (f'<details class="hmenu lang-menu"><summary aria-label="{esc(T(current, "language"))}: {LANG_LABEL[current]}">'
             f'<span class="globe" aria-hidden="true"></span>{LANG_LABEL[current]}</summary>'
             f'<ul>{items}</ul></details>')
+
+
+THEME_ICONS = {
+    "auto": '<svg class="ticon t-auto" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6"/>'
+            '<path class="fill" d="M8 2a6 6 0 0 1 0 12z"/></svg>',
+    "light": '<svg class="ticon t-light" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="3"/>'
+             '<path d="M8 1v2M8 13v2M1 8h2M13 8h2M3 3l1.4 1.4M11.6 11.6 13 13M3 13l1.4-1.4M11.6 4.4 13 3"/></svg>',
+    "dark": '<svg class="ticon t-dark" viewBox="0 0 16 16" aria-hidden="true">'
+            '<path d="M13.5 10.2A6 6 0 0 1 5.8 2.5a6 6 0 1 0 7.7 7.7z"/></svg>',
+}
+# Set before the page paints, so a saved choice never flashes the other theme first
+THEME_BOOT = ('<script>try{var t=localStorage.getItem("theme");if(t==="light"||t==="dark")'
+              'document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>')
+
+
+# Language on arrival: a choice made in the language menu is remembered and wins; otherwise, on an English page, the
+# browser's first (main) language picks Tamil or Hindi. Any other browser language — including ones the site doesn't
+# have yet, such as Telugu — stays on English. Search-engine crawlers send English and keep no storage, so every
+# language version stays crawlable at its own address.
+LANG_BOOT = ('<script>(function(){try{var L=["en","ta","hi"],c=document.documentElement.lang,'
+             'p=localStorage.getItem("lang"),w=L.indexOf(p)>=0?p:"";'
+             'if(!w&&c==="en"){var n=(navigator.languages&&navigator.languages[0])||navigator.language||"",'
+             'b=String(n).toLowerCase().split("-")[0];if(L.indexOf(b)>=0)w=b}'
+             'if(w&&w!==c){var r=location.pathname.replace(/^\\/(ta|hi)(?=\\/|$)/,"")||"/";'
+             'location.replace((w==="en"?r:"/"+w+(r==="/"?"":r))+location.search+location.hash)}}catch(e){}})()</script>')
+
+
+def theme_menu(lang: str) -> str:
+    """Theme: follow the device (default), light or dark. The choice is remembered in this browser only."""
+    items = "".join(f'<li><button type="button" role="menuitemradio" aria-checked="{"true" if k == "auto" else "false"}" '
+                    f'data-action="theme" data-theme="{k}">{THEME_ICONS[k]}{esc(T(lang, "theme_" + k))}</button></li>'
+                    for k in ("auto", "light", "dark"))
+    label = esc(T(lang, "theme"))
+    return (f'<details class="hmenu theme-menu"><summary aria-label="{label}" title="{label}">'
+            f'{"".join(THEME_ICONS.values())}</summary><ul role="menu">{items}</ul></details>')
 
 
 def abs_url(s: Settings, path: str) -> str:
@@ -194,6 +229,7 @@ def layout(s: Settings, title: str, body: str, *, active: str = "", map_page: bo
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+{THEME_BOOT}{LANG_BOOT if path is not None else ""}
 <title>{esc(full_title)}</title>
 {seo_head(s, full_title, description or DEFAULT_DESC, lpath(lang, path) if path is not None else None, lang,
           alternates, ld, og_type)}
@@ -204,7 +240,8 @@ def layout(s: Settings, title: str, body: str, *, active: str = "", map_page: bo
 </head>
 <body data-map-style="{esc(s.map_style_url)}">
 <a class="skip" href="#main">{T(lang, "skip")}</a>
-<header class="site-head no-print"><a class="brand" href="/">{esc(s.site_name)}</a><nav>{nav}</nav>{switch}</header>
+<header class="site-head no-print"><a class="brand" href="/">{esc(s.site_name)}</a><nav>{nav}</nav>
+<div class="head-tools">{switch}{theme_menu(lang)}</div></header>
 {top}
 <div class="page{' with-side' if side else ''}">
 <main id="main">{body}</main>
@@ -751,6 +788,9 @@ _PRIVACY = {
                 "எதுவும் சேமிக்கப்படாததால் நீக்க வேண்டியதும் எதுவுமில்லை. பக்கத்தை அச்சிடுவதும் சேமிப்பதும் உங்கள் "
                 "விருப்பம்.",
                 "कुछ भी सहेजा नहीं जाता, इसलिए हटाने को कुछ नहीं है। पृष्ठ प्रिंट करना या सहेजना आपकी मर्ज़ी है।"),
+    "remember": (" Your language and theme choices are remembered in your own browser only.",
+                 " நீங்கள் தேர்ந்தெடுக்கும் மொழியும் தோற்றமும் உங்கள் உலாவியில் மட்டுமே நினைவில் வைக்கப்படுகின்றன.",
+                 " आपकी चुनी हुई भाषा और थीम केवल आपके अपने ब्राउज़र में याद रखी जाती हैं।"),
     "write": ("Write to {email}.", "தொடர்புக்கு: {email}.", "संपर्क: {email}।"),
 }
 
@@ -774,7 +814,7 @@ def privacy(s: Settings, lang: str = "en") -> str:
 <ul><li>{P("t_cloud")}</li><li>{P("t_cf")}</li>{ads_li}{ga_li}<li>{P("t_fonts")}</li></ul>
 <p>{P("none_get")}</p>
 <h2>{P("h_choices")}</h2>
-<p>{P("choices")}{contact}</p>"""
+<p>{P("choices")}{P("remember")}{contact}</p>"""
     return layout(s, P("h1"), body, path="/privacy", lang=lang, **meta(s, "privacy", lang))
 
 

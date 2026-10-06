@@ -26,6 +26,7 @@
     var a = el.getAttribute("data-action");
     if (a === "print") window.print();
     else if (a === "back") history.back();
+    else if (a === "theme") setTheme(el.getAttribute("data-theme"), el.closest("details"));
     else if (a === "consent-ok") { store("consent-ok", "1"); document.getElementById("consent").hidden = true; }
     else if (a === "map") toggleMap(el.closest(".place-field"));
     else if (a === "tip") {
@@ -39,16 +40,36 @@
   document.addEventListener("keydown", function (e) {
     if (e.key === "Escape") {
       document.querySelectorAll(".tip.open").forEach(function (x) { x.classList.remove("open"); });
-      document.querySelectorAll(".lang-menu[open]").forEach(function (d) { d.open = false; });
+      document.querySelectorAll(".hmenu[open]").forEach(function (d) { d.open = false; });
     }
+  });
+  // language menu: remember the choice, so later visits open in this language
+  document.addEventListener("click", function (e) {
+    var a = e.target.closest(".lang-menu a[hreflang]");
+    if (a) store("lang", a.getAttribute("hreflang"));
   });
   // language menu: close when clicking anywhere else
   document.addEventListener("click", function (e) {
-    document.querySelectorAll(".lang-menu[open]").forEach(function (d) { if (!d.contains(e.target)) d.open = false; });
+    document.querySelectorAll(".hmenu[open]").forEach(function (d) { if (!d.contains(e.target)) d.open = false; });
   });
   document.addEventListener("click", function (e) {
     if (!e.target.closest(".tip")) document.querySelectorAll(".tip.open").forEach(function (x) { x.classList.remove("open"); });
   });
+  // ---------------------------------------------------------------- theme (auto / light / dark), remembered locally
+  function markTheme(t) {
+    document.querySelectorAll('[data-action="theme"]').forEach(function (b) {
+      b.setAttribute("aria-checked", b.getAttribute("data-theme") === t ? "true" : "false");
+    });
+  }
+  function setTheme(t, menu) {
+    if (t === "light" || t === "dark") document.documentElement.setAttribute("data-theme", t);
+    else { t = "auto"; document.documentElement.removeAttribute("data-theme"); }
+    try { if (t === "auto") localStorage.removeItem("theme"); else localStorage.setItem("theme", t); } catch (e) {}
+    markTheme(t);
+    if (menu) menu.open = false;
+  }
+  markTheme(document.documentElement.getAttribute("data-theme") || "auto");
+
   var consent = document.getElementById("consent");
   if (consent && store("consent-ok") !== "1") consent.hidden = false;
 

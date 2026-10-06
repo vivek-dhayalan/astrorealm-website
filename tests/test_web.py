@@ -352,6 +352,21 @@ def test_ui_strings_complete():
 
 def test_language_menu_is_a_dropdown_of_links():
     page = views.home(Settings(), "ta")
-    menu = page[page.index('<details class="lang-menu">'):page.index("</details>")]
+    menu = page[page.index('<details class="hmenu lang-menu">'):page.index("</details>")]
     assert 'href="/"' in menu and 'href="/ta"' in menu and 'href="/hi"' in menu and 'aria-current="true"' in menu
     assert "<select" not in menu
+
+
+def test_theme_menu_in_header():
+    page = views.home(Settings(), "hi")
+    head = page[page.index("<header"):page.index("</header>")]
+    assert head.count('data-action="theme"') == 3 and "गहरा" in head
+    assert 'localStorage.getItem("theme")' in page.split("</head>")[0]  # applied before first paint
+
+
+def test_browser_language_redirect_script():
+    page = views.home(Settings(), "en")
+    head = page.split("</head>")[0]
+    assert "navigator.languages" in head and 'localStorage.getItem("lang")' in head
+    # not on result or error pages (no path), so a POST result is never redirected
+    assert "navigator.languages" not in views.error_page(Settings(), "x", "y")

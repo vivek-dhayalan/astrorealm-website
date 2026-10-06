@@ -75,6 +75,10 @@ _T: dict[str, tuple[str, str, str]] = {
     "or": (" or ", " அல்லது ", " या "),
     "home": ("Home", "முகப்பு", "मुखपृष्ठ"),
     "language": ("Language", "மொழி", "भाषा"),
+    "theme": ("Theme", "தோற்றம்", "थीम"),
+    "theme_auto": ("Device setting", "சாதன அமைப்பு", "डिवाइस के अनुसार"),
+    "theme_light": ("Light", "வெளிர்", "हल्का"),
+    "theme_dark": ("Dark", "இருள்", "गहरा"),
 
     # home
     "home_h1": ("Free horoscope and marriage matching", "இலவச ஜாதகம் மற்றும் திருமணப் பொருத்தம்",
