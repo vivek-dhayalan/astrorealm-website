@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Query, Request
-from fastapi.responses import HTMLResponse, JSONResponse, Response
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 
 from ..core.ayanamsa import Ayanamsa
 from ..core.timeutil import InputError
@@ -10,11 +10,13 @@ from ..geo import get_resolver
 from ..matching import ashtakoota, kp, porutham
 from ..render import svg
 from ..service import ResolvedPerson
-from . import views
-from .learn import ARTICLES, BY_SLUG
+from . import refpages, stars, views
+from .learn import ARTICLES
 from .forms import HoroscopeForm, MatchForm, parse_body
 from .security import RateLimiter, client_ip, verify_turnstile
 from .settings import get_settings
+from .strings import LANGS
+from .ui import SITE_LANGS, lpath, prefix
 
 router = APIRouter(include_in_schema=False)
 _limiter: RateLimiter | None = None
@@ -66,14 +68,77 @@ def _input_error_message(exc: InputError) -> tuple[str, list | None]:
 
 
 # ------------------------------------------------------------------ pages
-@router.get("/", response_class=HTMLResponse)
-def home():
-    return html(views.home(get_settings()))
+# Every public page exists in each site language: /x (English), /ta/x (Tamil), /hi/x (Hindi).
+def _localized(path: str, handler, with_slug: bool = False) -> None:
+    for code in SITE_LANGS:
+        url = lpath(code, path) if "{" not in path else prefix(code) + path
+
+        def make(lang):
+            if with_slug:
+                def endpoint(slug: str):
+                    return handler(lang, slug)
+            else:
+                def endpoint(request: Request):
+                    return handler(lang, request)
+            return endpoint
+        router.add_api_route(url, make(code), methods=["GET"], response_class=HTMLResponse, include_in_schema=False)
 
 
-@router.get("/horoscope", response_class=HTMLResponse)
-def horoscope_page():
-    return html(views.horoscope_form(get_settings(), HoroscopeForm()))
+def _ui(form: dict) -> str:
+    """Site language the form was sent from (hidden field), so the result page keeps it."""
+    v = (form.get("ui") or [""])[0]
+    return v if v in SITE_LANGS else "en"
+
+
+def _output_lang(lang: str, request: Request) -> str:
+    """Output language preselected on the forms: ?lang= if given, else the site language."""
+    q = request.query_params.get("lang", "")
+    return q if q in LANGS else lang
+
+
+def _not_found(lang: str):
+    return html(views.not_found(get_settings(), lang), 404)
+
+
+_localized("/", lambda lang, r: html(views.home(get_settings(), lang)))
+_localized("/horoscope", lambda lang, r: html(views.horoscope_form(
+    get_settings(), HoroscopeForm(lang=_output_lang(lang, r)), ui=lang)))
+_localized("/match", lambda lang, r: html(views.match_form(
+    get_settings(), MatchForm(lang=_output_lang(lang, r)), ui=lang)))
+_localized("/credits", lambda lang, r: html(views.credits(get_settings(), lang)))
+_localized("/privacy", lambda lang, r: html(views.privacy(get_settings(), lang)))
+_localized("/terms", lambda lang, r: html(views.terms(get_settings(), lang)))
+_localized("/upcoming", lambda lang, r: html(views.upcoming(get_settings(), lang)))
+_localized("/learn", lambda lang, r: html(views.learn_index(get_settings(), lang)))
+_localized("/learn/nakshatras", lambda lang, r: html(refpages.nakshatra_index(get_settings(), lang)))
+_localized("/learn/rasis", lambda lang, r: html(refpages.rasi_index(get_settings(), lang)))
+_localized(refpages.TABLE_PATH, lambda lang, r: html(refpages.porutham_table(get_settings(), lang)))
+
+
+def _nakshatra(lang: str, slug: str):
+    n = stars.NAK_BY_SLUG.get(slug)
+    return _not_found(lang) if n is None else html(refpages.nakshatra_page(get_settings(), n, lang))
+
+
+def _rasi(lang: str, slug: str):
+    r = stars.RASI_BY_SLUG.get(slug)
+    return _not_found(lang) if r is None else html(refpages.rasi_page(get_settings(), r, lang))
+
+
+def _article(lang: str, slug: str):
+    a = views.article_by_slug(lang, slug)
+    return _not_found(lang) if a is None else html(views.learn_article(get_settings(), a, lang))
+
+
+@router.get("/hi/learn/guna-milan")
+def old_guna_milan():
+    """Earlier address of the Hindi Ashtakoota article."""
+    return RedirectResponse("/hi/learn/ashtakoota", status_code=301)
+
+
+_localized("/learn/nakshatra/{slug}", _nakshatra, with_slug=True)
+_localized("/learn/rasi/{slug}", _rasi, with_slug=True)
+_localized("/learn/{slug}", _article, with_slug=True)
 
 
 @router.post("/horoscope", response_class=HTMLResponse)
@@ -83,12 +148,13 @@ async def horoscope_submit(request: Request):
         form = parse_body(await request.body())
     except ValueError as exc:
         return html(views.error_page(s, "Form too large", str(exc)), 413, private=True)
+    ui = _ui(form)
     frm = HoroscopeForm.parse(form)
     blocked = await _guard(request, form)
     if blocked:
-        return html(views.horoscope_form(s, frm, blocked), 429 if "Too many" in blocked else 400, private=True)
+        return html(views.horoscope_form(s, frm, blocked, ui=ui), 429 if "Too many" in blocked else 400, private=True)
     if frm.errors:
-        return html(views.horoscope_form(s, frm, "Please check the highlighted fields."), 422, private=True)
+        return html(views.horoscope_form(s, frm, "Please check the highlighted fields.", ui=ui), 422, private=True)
     try:
         rp = ResolvedPerson(frm.birth.to_person())
         chart = rp.chart(frm.ayanamsa)
@@ -102,13 +168,8 @@ async def horoscope_submit(request: Request):
     except InputError as exc:
         msg, cands = _input_error_message(exc)
         frm.errors["place" if "PLACE" in exc.code else "dob"] = msg
-        return html(views.horoscope_form(s, frm, msg, cands), 422, private=True)
-    return html(views.horoscope_result(s, frm, _place_label(frm.birth, rp), chart, svgs), private=True)
-
-
-@router.get("/match", response_class=HTMLResponse)
-def match_page():
-    return html(views.match_form(get_settings(), MatchForm()))
+        return html(views.horoscope_form(s, frm, msg, cands, ui=ui), 422, private=True)
+    return html(views.horoscope_result(s, frm, _place_label(frm.birth, rp), chart, svgs, ui=ui), private=True)
 
 
 @router.post("/match", response_class=HTMLResponse)
@@ -118,68 +179,40 @@ async def match_submit(request: Request):
         form = parse_body(await request.body())
     except ValueError as exc:
         return html(views.error_page(s, "Form too large", str(exc)), 413, private=True)
+    ui = _ui(form)
     frm = MatchForm.parse(form)
     blocked = await _guard(request, form)
     if blocked:
-        return html(views.match_form(s, frm, blocked), 429 if "Too many" in blocked else 400, private=True)
+        return html(views.match_form(s, frm, blocked, ui=ui), 429 if "Too many" in blocked else 400, private=True)
     if frm.errors:
-        return html(views.match_form(s, frm, "Please check the highlighted fields."), 422, private=True)
+        return html(views.match_form(s, frm, "Please check the highlighted fields.", ui=ui), 422, private=True)
     people = {}
-    for role, b, prefix in (("bride", frm.bride, "b_"), ("groom", frm.groom, "g_")):
+    for role, b, prefix_ in (("bride", frm.bride, "b_"), ("groom", frm.groom, "g_")):
         try:
             people[role] = ResolvedPerson(b.to_person())
         except InputError as exc:
             msg, cands = _input_error_message(exc)
-            frm.errors[prefix + "place"] = msg
-            return html(views.match_form(s, frm, f"{role.title()}: {msg}", cands), 422, private=True)
+            frm.errors[prefix_ + "place"] = msg
+            return html(views.match_form(s, frm, f"{role.title()}: {msg}", cands, ui=ui), 422, private=True)
     charts = {r: p.chart(frm.ayanamsa) for r, p in people.items()}
     svgs = {r: svg.grid_svg(c, frm.lang, "RASI", degrees=False) for r, c in charts.items()}
     labels = {"bride": _place_label(frm.bride, people["bride"]), "groom": _place_label(frm.groom, people["groom"])}
     # matchers take (boy, girl)
     ashta = ashtakoota.match(charts["groom"], charts["bride"])
     poru = porutham.match(charts["groom"], charts["bride"])
-    return html(views.match_result(s, frm, labels, charts, svgs, ashta, poru), private=True)
+    return html(views.match_result(s, frm, labels, charts, svgs, ashta, poru, ui=ui), private=True)
 
 
-@router.get("/credits", response_class=HTMLResponse)
-def credits_page():
-    return html(views.credits(get_settings()))
-
-
-@router.get("/privacy", response_class=HTMLResponse)
-def privacy_page():
-    return html(views.privacy(get_settings()))
-
-
-@router.get("/terms", response_class=HTMLResponse)
-def terms_page():
-    return html(views.terms(get_settings()))
-
-
-@router.get("/upcoming", response_class=HTMLResponse)
-def upcoming_page():
-    return html(views.upcoming(get_settings()))
-
-
-@router.get("/learn", response_class=HTMLResponse)
-def learn_index():
-    return html(views.learn_index(get_settings()))
-
-
-@router.get("/learn/{slug}", response_class=HTMLResponse)
-def learn_article(slug: str):
-    article = BY_SLUG.get(slug)
-    if article is None:
-        return html(views.error_page(get_settings(), "Not found", "That guide doesn't exist."), 404)
-    return html(views.learn_article(get_settings(), article))
+def site_paths() -> list[str]:
+    """Language-neutral paths of every public page (the sitemap lists each in every language)."""
+    return (["/", "/horoscope", "/match", "/learn"] + [f"/learn/{a.slug}" for a in ARTICLES]
+            + refpages.sitemap_paths() + ["/upcoming", "/credits", "/privacy", "/terms"])
 
 
 @router.get("/sitemap.xml")
 def sitemap():
     base = (get_settings().base_url or "").rstrip("/")
-    paths = ["/", "/horoscope", "/match", "/learn"] + [f"/learn/{a.slug}" for a in ARTICLES] + \
-            ["/upcoming", "/credits", "/privacy", "/terms"]
-    urls = "".join(f"<url><loc>{base}{p}</loc></url>" for p in paths)
+    urls = "".join(f"<url><loc>{base}{lpath(code, p)}</loc></url>" for p in site_paths() for code in SITE_LANGS)
     xml = f'<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">{urls}</urlset>'
     return Response(xml, media_type="application/xml")
 

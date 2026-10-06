@@ -3,6 +3,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from ..rules import v1 as R
+from .stars import NAK_SLUGS
+
+PUBLISHED = "2026-10-05"
+MODIFIED = "2026-10-06"
+
 
 @dataclass(frozen=True)
 class Article:
@@ -10,6 +16,28 @@ class Article:
     title: str
     summary: str
     body: str
+    seo_title: str = ""      # <title>; falls back to title
+    description: str = ""    # meta description; falls back to summary
+
+
+def star_links(idx: list[int], lang: str = "en") -> str:
+    return ", ".join(f'<a href="/learn/nakshatra/{NAK_SLUGS[i]}">{star_name(lang, i)}</a>' for i in idx)
+
+
+def group_table(table: list[str], order: list[tuple[str, str]], lang: str = "en") -> str:
+    """Stars grouped by a per-nakshatra table (rajju, nadi, gana); order = [(value, row label)]."""
+    rows = "".join(f"<tr><th>{label}</th><td>{star_links([i for i, v in enumerate(table) if v == key], lang)}</td></tr>"
+                   for key, label in order)
+    return f'<table class="grid"><tbody>{rows}</tbody></table>'
+
+
+def star_name(lang: str, i: int) -> str:
+    from .stars import names
+    return names(lang, "nakshatra", i)
+
+
+_RAJJU_TABLE = group_table(R.RAJJU, [(g, g) for g in ["Siro", "Kantha", "Nabhi", "Kati", "Pada"]])
+_NADI_TABLE = group_table(R.NADI, [("A", "Adi"), ("M", "Madhya"), ("N", "Antya")])
 
 
 ARTICLES: list[Article] = [
@@ -40,6 +68,8 @@ the lagna sits very close to a boundary, and it matters a great deal in KP astro
 a fraction of a degree. If you are taking the chart to an astrologer, choose the ayanamsa they use. Every
 AstroRealm printout states which ayanamsa it used, with its exact value.</p>
 """,
+        'Ayanamsa Explained: Lahiri vs KP (Krishnamurti) – Which Should You Use?',
+        'What ayanamsa is, why Indian (sidereal) charts differ from Western ones by about 24°, and how Lahiri and KP ayanamsa differ.',
     ),
     Article(
         "rasi-navamsa",
@@ -70,6 +100,8 @@ really is: a planet in the same sign in both charts (<em>vargottama</em>) is con
 <p>Because the Lagna moves through a navamsa in about 13 minutes, the Navamsa Lagna is sensitive to the birth
 time — see <a href="/learn/birth-time">why the exact birth time matters</a>.</p>
 """,
+        'How to Read a South Indian Rasi Chart and Navamsa (D9) Chart',
+        "A beginner's guide to the South Indian horoscope chart: the 12 fixed boxes, the Lagna, houses, planet abbreviations and the Navamsa (D-9) chart.",
     ),
     Article(
         "ashtakoota",
@@ -107,6 +139,8 @@ cancelled.</p>
 <p>Ashtakoota is one view of compatibility. South Indian families usually also look at the
 <a href="/learn/porutham">Porutham</a> system, and astrologers read both charts as a whole before advising.</p>
 """,
+        'Ashtakoota Guna Milan: 8 Kootas and 36 Gunas Explained',
+        'Guna Milan (Ashtakoota) marriage matching explained: the 8 kootas, points out of 36, how to read the score, and Nadi, Bhakoot and Gana dosha.',
     ),
     Article(
         "porutham",
@@ -144,6 +178,8 @@ used by the astrologer we validated against:</p>
 not matched) and <em>lenient</em> (partial counts as matched). Traditions differ on the exact counts for Dina,
 Stree Deergha and Rasi; the rules this site uses are published in its <a href="/credits">source code</a>.</p>
 """,
+        '10 Porutham (Thirumana Porutham) Explained: Rajju, Vedha, Dina and More',
+        'South Indian marriage matching: what each of the 10 (and 12) poruthams checks, including Rajju and Vedha, and how the result is graded.',
     ),
     Article(
         "kp-astrology",
@@ -172,6 +208,8 @@ when it signifies the 2nd, 7th and 11th houses, marriage is said to be promised.
 <p>Sub lords of the house cusps can change within a few minutes of birth time. Always check the time against the
 birth certificate or hospital record, and see <a href="/learn/birth-time">why exact birth details matter</a>.</p>
 """,
+        'KP Astrology Basics: Star Lord, Sub Lord and Significators',
+        'Krishnamurti Paddhati in brief: sign, star and sub lords, the KP ayanamsa, house significators, and how KP judges marriage from the 7th cusp.',
     ),
     Article(
         "birth-time",
@@ -197,6 +235,57 @@ usually close enough, but the exact spot is better for KP.</p>
 <h2>Privacy</h2>
 <p>AstroRealm does not store what you enter — see the <a href="/privacy">privacy page</a>.</p>
 """,
+        'Why Exact Birth Time and Place Matter for Your Horoscope',
+        'How a few minutes or a wrong town can change the Lagna, the nakshatra, KP sub lords and marriage matching results.',
+    ),
+    Article(
+        "rajju-nadi",
+        "Rajju and Nadi dosha: the two checks that can reject a match",
+        "Which stars fall in each rajju and nadi, what a clash means, and the exceptions astrologers accept.",
+        """
+<p>Of all the matching checks, <strong>Rajju</strong> (in Porutham) and <strong>Nadi</strong> (in both Porutham
+and Ashtakoota) are the ones families take most seriously. Both group the 27 nakshatras, and both fail when the
+bride and groom fall in the <em>same</em> group. Both depend only on the Moon's birth star (janma nakshatra), so you
+can check them as soon as you know the two stars — see the
+<a href="/learn/nakshatra-porutham-table">nakshatra porutham table</a>.</p>
+<h2>Rajju: the five body parts</h2>
+<p>Rajju means “rope”. The nakshatras are laid out along the body, from the feet to the head and back, in a
+repeating pattern, giving five rajjus:</p>
+""" + _RAJJU_TABLE + """
+<p>If both partners' stars are in the same rajju, Rajju porutham fails. Traditional texts attach a meaning to each
+clash: <strong>Siro</strong> (head) is said to affect the husband, <strong>Kantha</strong> (neck) the wife,
+<strong>Nabhi</strong> (navel) the children, <strong>Kati</strong> (waist) the family's finances and
+<strong>Pada</strong> (feet) to bring separation and wandering. These are traditional beliefs, not predictions.</p>
+<p>Many astrologers treat a Rajju clash as serious enough that the other poruthams cannot make up for it. On
+AstroRealm a match is graded <em>Madhyamam</em> (average) or better only when Rajju matches. Some regional texts
+allow exceptions — for example when the two stars are in the same rajju but in different directions (aroha and
+avaroha) — but practice varies, so AstroRealm does not apply them. Ask your astrologer if your case is borderline.</p>
+<h2>Nadi: the three constitutions</h2>
+<p>Nadi groups the stars into three, which Ayurveda links to the three doshas: <strong>Adi</strong> (vata),
+<strong>Madhya</strong> (pitta) and <strong>Antya</strong> (kapha). The pattern runs Adi, Madhya, Antya, Antya,
+Madhya, Adi across the zodiac:</p>
+""" + _NADI_TABLE + """
+<p>When both partners have the same nadi, it is called <strong>Nadi dosha</strong>. In
+<a href="/learn/ashtakoota">Ashtakoota (Guna Milan)</a> the Nadi koota then scores 0 of its 8 points — the largest
+single loss possible. Traditionally it is linked to the health of the couple and their children.</p>
+<h2>When Nadi dosha is excused</h2>
+<p>Classical texts excuse a same-nadi pair in some cases. AstroRealm, following the astrologer whose results it
+was checked against, accepts three:</p>
+<ul>
+<li>the same nakshatra but a different rasi (possible for stars that span two signs, such as Krittika or Chitra);</li>
+<li>the same nakshatra but a different pada (quarter);</li>
+<li>the same rasi but a different nakshatra.</li>
+</ul>
+<p>Without one of these, a Nadi clash makes the Porutham result <em>Rejected</em> on AstroRealm. The other check
+that rejects a match outright is <strong>Vedha</strong>: fixed pairs of stars that “obstruct” each other, such as
+Ashwini and Jyeshtha or Rohini and Swati. Each <a href="/learn/nakshatras">nakshatra page</a> lists its Vedha star.</p>
+<h2>Checking your own match</h2>
+<p>Star-level tables are a quick first look. A full match also needs the rasi and pada, which depend on the exact
+birth time — <a href="/match">check the full matching</a> with both sets of birth details.</p>
+""",
+        "Rajju Porutham and Nadi Dosha Explained – Star Lists and Exceptions",
+        "Which nakshatras fall in each Rajju (Siro, Kantha, Nabhi, Kati, Pada) and Nadi (Adi, Madhya, Antya), "
+        "what a clash means, and when Nadi dosha is excused.",
     ),
 ]
 

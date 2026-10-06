@@ -28,6 +28,8 @@ class Settings:
     ga_measurement_id: str = field(default_factory=lambda: _env("GA_MEASUREMENT_ID"))
     # Map style for MapLibre — OpenFreeMap: free, no API key, commercial use allowed (attribution comes from the style)
     map_style_url: str = field(default_factory=lambda: _env("MAP_STYLE_URL", "https://tiles.openfreemap.org/styles/liberty"))
+    # Share image for links on WhatsApp/social media (1200x630 PNG/JPG, absolute URL); empty = none yet
+    og_image_url: str = field(default_factory=lambda: _env("OG_IMAGE_URL"))
     # Header carrying the visitor's IP (first entry is used); see security.client_ip
     client_ip_header: str = field(default_factory=lambda: _env("CLIENT_IP_HEADER", "x-forwarded-for").lower())
     # Requests per minute per client IP for form submissions and place search

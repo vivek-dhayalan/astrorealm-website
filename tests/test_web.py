@@ -128,14 +128,18 @@ def test_result_pages_have_no_ads_and_generic_titles():
 def test_learn_pages_and_internal_links():
     import re
     from app.web.learn import ARTICLES, BY_SLUG
+    from app.web import refpages
     s = Settings()
     assert len(ARTICLES) >= 6 and all(a.slug in views.learn_index(s) for a in ARTICLES)
-    known = {"/", "/horoscope", "/match", "/learn", "/upcoming", "/credits", "/privacy", "/terms"} | {f"/learn/{a.slug}" for a in ARTICLES}
-    for a in ARTICLES:
-        page = views.learn_article(s, a)
-        assert a.title in page
-        for href in re.findall(r'href="(/[^"]*)"', a.body):
-            assert href in known, (a.slug, href)
+    known = ({"/", "/horoscope", "/match", "/learn", "/upcoming", "/credits", "/privacy", "/terms"}
+             | {f"/learn/{a.slug}" for a in ARTICLES} | set(refpages.sitemap_paths()))
+    for lang, arts in views.ARTICLES_BY_LANG.items():
+        assert [a.slug for a in arts] == [a.slug for a in ARTICLES], lang  # every guide in every language
+        for a in arts:
+            page = views.learn_article(s, a, lang)
+            assert a.title.replace("'", "&#x27;") in page or a.title in page
+            for href in re.findall(r'href="(/[^"]*)"', a.body):
+                assert href in known, (lang, a.slug, href)
     for key, (_, _, href) in views.TIPS.items():
         assert href.removeprefix("/learn/") in BY_SLUG, key
 
@@ -223,3 +227,131 @@ def test_upcoming_page_lists_hidden_features():
     page = views.upcoming(Settings())
     for name in ("Manglik", "KP 7th cusp", "Dasavidha"):
         assert name in page
+
+
+def _all_public_pages(s):
+    """{url: html} for every public page in every site language."""
+    from app.web import refpages
+    from app.web.ui import SITE_LANGS, lpath
+    pages = {}
+    for lang in SITE_LANGS:
+        P = lambda p: lpath(lang, p)  # noqa: E731
+        pages.update({P("/"): views.home(s, lang), P("/learn"): views.learn_index(s, lang),
+                      P("/horoscope"): views.horoscope_form(s, HoroscopeForm(), ui=lang),
+                      P("/match"): views.match_form(s, MatchForm(), ui=lang), P("/credits"): views.credits(s, lang),
+                      P("/privacy"): views.privacy(s, lang), P("/terms"): views.terms(s, lang),
+                      P("/upcoming"): views.upcoming(s, lang),
+                      P("/learn/nakshatras"): refpages.nakshatra_index(s, lang),
+                      P("/learn/rasis"): refpages.rasi_index(s, lang),
+                      P(refpages.TABLE_PATH): refpages.porutham_table(s, lang)})
+        pages.update({P(f"/learn/{a.slug}"): views.learn_article(s, a, lang) for a in views.ARTICLES_BY_LANG[lang]})
+        pages.update({P(f"/learn/nakshatra/{x}"): refpages.nakshatra_page(s, i, lang)
+                      for i, x in enumerate(refpages.S.NAK_SLUGS)})
+        pages.update({P(f"/learn/rasi/{x}"): refpages.rasi_page(s, i, lang) for i, x in enumerate(refpages.S.RASI_SLUGS)})
+    return pages
+
+
+def test_every_public_page_has_own_title_description_and_canonical():
+    import json
+    import re
+    s = Settings(base_url="https://astrorealm.in")
+    pages = _all_public_pages(s)
+    titles, descs = set(), set()
+    for path, html in pages.items():
+        title = re.search("<title>(.*?)</title>", html).group(1)
+        desc = re.search('name="description" content="(.*?)"', html).group(1)
+        assert title not in titles and desc not in descs, path
+        titles.add(title)
+        descs.add(desc)
+        assert f'<link rel="canonical" href="https://astrorealm.in{path}">' in html, path
+        assert 'property="og:title"' in html and html.count("<h1") == 1, path
+        for block in re.findall(r'<script type="application/ld\+json">(.*?)</script>', html):
+            json.loads(block)
+
+
+def test_hreflang_links_are_reciprocal():
+    import re
+    s = Settings(base_url="https://astrorealm.in")
+    pages = _all_public_pages(s)
+    for path, html in pages.items():
+        for lang, href in re.findall(r'hreflang="([a-z-]+)" href="https://astrorealm.in([^"]*)"', html):
+            if lang != "x-default":
+                assert f'href="https://astrorealm.in{path}"' in pages[href], (path, href)
+    assert '<html lang="ta">' in pages["/ta"] and "ஜாதகம்" in pages["/ta"]
+    assert len(pages) == 3 * 57  # same 57 pages in each language
+
+
+def test_language_is_kept_across_links():
+    import re
+    from app.web.ui import LOCALIZED
+    s = Settings(base_url="https://astrorealm.in")
+    for url, html in _all_public_pages(s).items():
+        lang = "ta" if url.startswith("/ta") else "hi" if url.startswith("/hi") else "en"
+        if lang == "en":
+            continue
+        for href in re.findall(r'(?<!hreflang="[a-z]{2}" )href="(/[^"#?]*)', html):
+            if href.startswith("/static") or href.startswith("/v1"):
+                continue
+            assert href.startswith(f"/{lang}"), (url, href)  # internal links stay in the page's language
+        assert f'<html lang="{lang}">' in html
+
+
+def test_same_home_layout_in_every_language():
+    s = Settings()
+    shapes = []
+    for lang in ("en", "ta", "hi"):
+        h = views.home(s, lang)
+        shapes.append((h.count('class="card"'), h.count("/learn/nakshatra/"), h.count("/learn/rasi/")))
+    assert shapes[0] == shapes[1] == shapes[2] == (4, 27, 12)
+
+
+def test_result_page_follows_site_language():
+    frm = MatchForm.parse({"b_name": ["A"], "b_dob": ["1996-07-14"], "b_tob": ["06:20"], "b_lat": ["11.00555"],
+                           "b_lon": ["76.96612"], "g_name": ["B"], "g_dob": ["1993-11-02"], "g_tob": ["21:05"],
+                           "g_lat": ["11.93381"], "g_lon": ["79.82979"], "lang": ["ta"], "ayanamsa": ["KP"]})
+    people = {"bride": ResolvedPerson(frm.bride.to_person()), "groom": ResolvedPerson(frm.groom.to_person())}
+    charts = {r: p.chart(frm.ayanamsa) for r, p in people.items()}
+    svgs = {r: svg.grid_svg(c, "ta", "RASI", degrees=False) for r, c in charts.items()}
+    a, p = ashtakoota.match(charts["groom"], charts["bride"]), porutham.match(charts["groom"], charts["bride"])
+    html = views.match_result(Settings(), frm, {"bride": "x", "groom": "y"}, charts, svgs, a, p, ui="ta")
+    assert "அச்சிடு" in html and 'href="/ta/match"' in html and '<html lang="ta">' in html
+
+
+def test_no_canonical_without_base_url_or_on_results():
+    assert "canonical" not in views.home(Settings(base_url=""))
+    assert "canonical" not in _match_html()
+
+
+def test_star_table_agrees_with_the_matcher():
+    from app.web import stars as S
+    t = S.star_table()
+    # same star, same pada: same nadi with no exception -> rejected; vedha pairs are always rejected
+    assert "REJECTED" in t[0][0].grades
+    for a, b in [(0, 17), (3, 14)]:
+        assert t[a][b].always == "REJECTED" and t[b][a].always == "REJECTED"
+    # Krittika (Mesha pada 1, Vrishabha 2-4) and Rohini share Antya nadi: excused only within Vrishabha
+    assert set(t[2][3].grades) >= {"REJECTED"} and len(t[2][3].grades) > 1
+    assert all(0 <= c.lo <= c.hi <= c.of == 12 for row in t for c in row)
+
+
+def test_form_language_preselect():
+    page = views.horoscope_form(Settings(), HoroscopeForm(lang="ta"), ui="ta")
+    assert 'value="ta" selected' in page and 'name="ui" value="ta"' in page
+    assert "Name" in page and "இலவச ஜாதகம்" in page  # form labels stay English, the page around it is Tamil
+
+
+def test_ui_strings_complete():
+    from app.web import ui
+    for k in ui.keys():
+        en, ta, hi = ui._T[k]
+        assert en is not None and ta is not None and hi is not None, k
+        assert (ta and hi) or k == "form_note", k
+    for key, by_lang in ui.PAGE_META.items():
+        assert set(by_lang) == set(ui.SITE_LANGS), key
+
+
+def test_language_menu_is_a_dropdown_of_links():
+    page = views.home(Settings(), "ta")
+    menu = page[page.index('<details class="lang-menu">'):page.index("</details>")]
+    assert 'href="/"' in menu and 'href="/ta"' in menu and 'href="/hi"' in menu and 'aria-current="true"' in menu
+    assert "<select" not in menu

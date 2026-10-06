@@ -5,16 +5,19 @@ description and SVGs we render ourselves.
 """
 from __future__ import annotations
 
+import json
 from datetime import datetime
 from html import escape
 from zoneinfo import ZoneInfo
 
 from ..core.reference import NAKSHATRAS, RASHIS
 from ..render import i18n
-from .learn import ARTICLES, Article
+from . import learn_hi, learn_ta
+from .learn import ARTICLES, MODIFIED, PUBLISHED, Article
 from .forms import CHART_PARTS, BirthInput, HoroscopeForm, MatchForm
 from .settings import Settings
 from .strings import LANG_NAMES, LANGS, t
+from .ui import LANG_LABEL, PAGE_META, SITE_LANGS, CREDIT_USES, T, localize_links, lpath
 
 FONTS_URL = ("https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;600;700"
              "&family=Noto+Sans+Tamil:wght@400;600;700&family=Noto+Sans+Telugu:wght@400;600;700"
@@ -39,11 +42,102 @@ def analytics_tags(measurement_id: str) -> str:
 
 
 TURNSTILE_JS = '<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>'
-STATIC_VERSION = "2"
+STATIC_VERSION = "6"
 
 
 def esc(v) -> str:
     return escape("" if v is None else str(v), quote=True)
+
+
+# ------------------------------------------------------------------ SEO
+DEFAULT_DESC = ("Free horoscope (jathagam) and marriage matching — Porutham and Ashtakoota (Guna Milan) — "
+                "in English, Tamil, Telugu, Malayalam, Kannada and Hindi.")
+OG_LOCALE = {"en": "en_IN", "ta": "ta_IN", "hi": "hi_IN"}
+ARTICLES_BY_LANG = {"en": ARTICLES, "ta": learn_ta.ARTICLES, "hi": learn_hi.ARTICLES}
+
+
+def site_lang(lang: str | None) -> str:
+    return lang if lang in SITE_LANGS else "en"
+
+
+def meta(s: Settings, key: str, lang: str = "en") -> dict:
+    title, desc = PAGE_META[key][site_lang(lang)]
+    return {"page_title": title.format(site=s.site_name), "description": desc.format(site=s.site_name)}
+
+
+def lang_switch(current: str, path: str) -> str:
+    """Language menu: a dropdown of links to the same page in each site language. Plain links (not a <select>), so it
+    works without JavaScript and search engines can follow them. hreflang comes before href so localize_links leaves
+    these alone."""
+    items = "".join(
+        f'<li><a hreflang="{code}" href="{lpath(code, path)}" lang="{code}"'
+        f'{" aria-current=" + chr(34) + "true" + chr(34) if code == current else ""}>{LANG_LABEL[code]}</a></li>'
+        for code in SITE_LANGS)
+    return (f'<details class="lang-menu"><summary aria-label="{esc(T(current, "language"))}: {LANG_LABEL[current]}">'
+            f'<span class="globe" aria-hidden="true"></span>{LANG_LABEL[current]}</summary>'
+            f'<ul>{items}</ul></details>')
+
+
+def abs_url(s: Settings, path: str) -> str:
+    return f"{s.base_url.rstrip('/')}{path}" if s.base_url else path
+
+
+def jsonld(data) -> str:
+    """JSON-LD block; '<' is escaped so the data can never close the script element."""
+    text = json.dumps(data, ensure_ascii=False, separators=(",", ":")).replace("<", "\\u003c")
+    return f'<script type="application/ld+json">{text}</script>'
+
+
+def org_ld(s: Settings) -> dict:
+    return {"@type": "Organization", "name": s.site_name, "url": abs_url(s, "/")}
+
+
+def breadcrumb_ld(s: Settings, trail: list[tuple[str, str]]) -> dict:
+    return {"@context": "https://schema.org", "@type": "BreadcrumbList",
+            "itemListElement": [{"@type": "ListItem", "position": i + 1, "name": name, "item": abs_url(s, path)}
+                                for i, (name, path) in enumerate(trail)]}
+
+
+def article_ld(s: Settings, path: str, headline: str, description: str, lang: str = "en") -> dict:
+    return {"@context": "https://schema.org", "@type": "Article", "headline": headline[:110],
+            "description": description, "inLanguage": lang, "url": abs_url(s, path),
+            "mainEntityOfPage": abs_url(s, path), "datePublished": PUBLISHED, "dateModified": MODIFIED,
+            "author": org_ld(s), "publisher": org_ld(s)}
+
+
+def app_ld(s: Settings, path: str, name: str, description: str) -> dict:
+    return {"@context": "https://schema.org", "@type": "WebApplication", "name": name, "url": abs_url(s, path),
+            "description": description, "applicationCategory": "LifestyleApplication", "operatingSystem": "Any",
+            "isAccessibleForFree": True, "inLanguage": ["en", "ta", "te", "ml", "kn", "hi"],
+            "offers": {"@type": "Offer", "price": "0", "priceCurrency": "INR"}, "provider": org_ld(s)}
+
+
+def seo_head(s: Settings, full_title: str, description: str, path: str | None, lang: str,
+             alternates: dict[str, str] | None, ld: list | None, og_type: str) -> str:
+    out = [f'<meta name="description" content="{esc(description)}">']
+    if path is not None and s.base_url:
+        url = abs_url(s, path)
+        out.append(f'<link rel="canonical" href="{esc(url)}">')
+        if alternates:
+            for code, alt in alternates.items():
+                out.append(f'<link rel="alternate" hreflang="{code}" href="{esc(abs_url(s, alt))}">')
+            if "en" in alternates:
+                out.append(f'<link rel="alternate" hreflang="x-default" href="{esc(abs_url(s, alternates["en"]))}">')
+        out += [f'<meta property="og:url" content="{esc(url)}">',
+                f'<meta property="og:type" content="{og_type}">',
+                f'<meta property="og:site_name" content="{esc(s.site_name)}">',
+                f'<meta property="og:title" content="{esc(full_title)}">',
+                f'<meta property="og:description" content="{esc(description)}">',
+                f'<meta property="og:locale" content="{OG_LOCALE.get(lang, "en_IN")}">']
+        for code in (alternates or {}):
+            if code != lang:
+                out.append(f'<meta property="og:locale:alternate" content="{OG_LOCALE.get(code, "en_IN")}">')
+        if s.og_image_url:
+            out.append(f'<meta property="og:image" content="{esc(s.og_image_url)}">')
+        out.append(f'<meta name="twitter:card" content="{"summary_large_image" if s.og_image_url else "summary"}">')
+    for item in ld or []:
+        out.append(jsonld(item))
+    return "\n".join(out)
 
 
 # ------------------------------------------------------------------ layout pieces
@@ -57,8 +151,17 @@ def ad_slot(s: Settings, slot_id: str, kind: str) -> str:
 
 
 def layout(s: Settings, title: str, body: str, *, active: str = "", map_page: bool = False,
-           turnstile: bool = False, side_ad: bool = True, ads: bool = True) -> str:
-    """ads=False for result pages: they hold names and birth details, so no ad or analytics script runs there."""
+           turnstile: bool = False, side_ad: bool = True, ads: bool = True, path: str | None = None,
+           description: str | None = None, page_title: str | None = None, lang: str = "en",
+           ld: list | None = None, og_type: str = "website") -> str:
+    """ads=False for result pages: they hold names and birth details, so no ad or analytics script runs there.
+    path: the page's language-neutral path (/learn/x) — gives the canonical link, the hreflang links and the language
+    switch (None on result and error pages). lang: the site language (en, ta, hi); internal links follow it.
+    page_title: the full <title>; default "<title> · <site name>"."""
+    lang = site_lang(lang)
+    full_title = page_title or f"{title} · {s.site_name}"
+    alternates = {code: lpath(code, path) for code in SITE_LANGS} if path is not None else None
+    switch = lang_switch(lang, path) if path is not None else ""
     ads_on = ads and s.ads_enabled
     ga_on = ads and s.analytics_enabled
     head_extra = []
@@ -74,33 +177,34 @@ def layout(s: Settings, title: str, body: str, *, active: str = "", map_page: bo
     cur = ' aria-current="page"'
     nav = "".join(
         f'<a href="{href}"{cur if key == active else ""}>{label}</a>'
-        for key, href, label in (("horoscope", "/horoscope", "Horoscope"), ("match", "/match", "Matching"),
-                                 ("learn", "/learn", "Learn"), ("credits", "/credits", "Credits")))
+        for key, href, label in (("horoscope", "/horoscope", T(lang, "nav_horoscope")),
+                                 ("match", "/match", T(lang, "nav_match")), ("learn", "/learn", T(lang, "nav_learn")),
+                                 ("credits", "/credits", T(lang, "nav_credits"))))
     consent = ""
     if ads_on or ga_on:
-        what = " and ".join(x for x, on in (("ads from Google AdSense", ads_on),
-                                             ("Google Analytics to count visits", ga_on)) if on)
-        consent = (f'<div class="consent no-print" id="consent" hidden><p>We use {what}, which use cookies. '
-                   'Your birth details are never shared with Google. '
-                   '<a href="/privacy">Privacy</a></p><button type="button" data-action="consent-ok">OK</button></div>')
+        what = T(lang, "and").join(T(lang, k) for k, on in (("consent_ads", ads_on), ("consent_ga", ga_on)) if on)
+        consent = (f'<div class="consent no-print" id="consent" hidden><p>{esc(T(lang, "consent", what=what))} '
+                   f'<a href="/privacy">{T(lang, "foot_privacy")}</a></p>'
+                   '<button type="button" data-action="consent-ok">OK</button></div>')
     side = ad_slot(s, s.adsense_slot_side, "side") if (side_ad and ads) else ""
     top = ad_slot(s, s.adsense_slot_top, "top") if ads else ""
     bottom = ad_slot(s, s.adsense_slot_bottom, "bottom") if ads else ""
-    return f"""<!doctype html>
-<html lang="en">
+    page = f"""<!doctype html>
+<html lang="{lang}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{esc(title)} · {esc(s.site_name)}</title>
-<meta name="description" content="Free horoscope (jathagam) and marriage matching — Ashtakoota and Porutham — in English, Tamil, Telugu, Malayalam, Kannada and Hindi.">
+<title>{esc(full_title)}</title>
+{seo_head(s, full_title, description or DEFAULT_DESC, lpath(lang, path) if path is not None else None, lang,
+          alternates, ld, og_type)}
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="{FONTS_URL}">
 <link rel="stylesheet" href="/static/site.css?v={STATIC_VERSION}">
 {''.join(head_extra)}
 </head>
 <body data-map-style="{esc(s.map_style_url)}">
-<a class="skip" href="#main">Skip to content</a>
-<header class="site-head no-print"><a class="brand" href="/">{esc(s.site_name)}</a><nav>{nav}</nav></header>
+<a class="skip" href="#main">{T(lang, "skip")}</a>
+<header class="site-head no-print"><a class="brand" href="/">{esc(s.site_name)}</a><nav>{nav}</nav>{switch}</header>
 {top}
 <div class="page{' with-side' if side else ''}">
 <main id="main">{body}</main>
@@ -108,16 +212,16 @@ def layout(s: Settings, title: str, body: str, *, active: str = "", map_page: bo
 </div>
 {bottom}
 <footer class="site-foot no-print">
-<p>Free to use. For guidance only — consult an astrologer before taking decisions.</p>
-<p><a href="/learn">Learn</a> · <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · <a href="/credits">Credits</a> · <a href="/upcoming">Coming soon</a></p>
-<p class="small">Place data © <a href="https://www.geonames.org/" rel="noopener">GeoNames</a> (CC BY 4.0).
-Calculations use the Swiss Ephemeris © Astrodienst AG.</p>
+<p>{T(lang, "foot_disclaimer")}</p>
+<p><a href="/learn">{T(lang, "nav_learn")}</a> · <a href="/privacy">{T(lang, "foot_privacy")}</a> · <a href="/terms">{T(lang, "foot_terms")}</a> · <a href="/credits">{T(lang, "nav_credits")}</a> · <a href="/upcoming">{T(lang, "foot_upcoming")}</a></p>
+<p class="small">{T(lang, "foot_attrib", geonames='<a href="https://www.geonames.org/" rel="noopener">GeoNames</a>')}</p>
 </footer>
 {consent}
 {MAP_JS if map_page else ''}
 <script src="/static/site.js?v={STATIC_VERSION}" defer></script>
 </body>
 </html>"""
+    return localize_links(page, lang)
 
 
 # ------------------------------------------------------------------ form widgets
@@ -243,23 +347,44 @@ def banner(message: str | None, candidates: list[dict] | None = None) -> str:
 
 
 # ------------------------------------------------------------------ pages
-def home(s: Settings) -> str:
-    body = """<section class="hero"><h1>Free horoscope and marriage matching</h1>
-<p>South Indian charts, Ashtakoota and 12-porutham matching, in English, தமிழ், తెలుగు, മലയാളം, ಕನ್ನಡ and हिन्दी.
-Nothing you enter is saved.</p></section>
-<div class="cards">
-<a class="card" href="/horoscope"><h2>Horoscope</h2><p>Rasi and Navamsa charts with your family and personal details,
-ready to print on A5.</p></a>
-<a class="card" href="/match"><h2>Marriage matching</h2><p>Ashtakoota (36 gunas) and Porutham for a bride and groom,
-with both Rasi charts.</p></a>
-<a class="card" href="/learn"><h2>Learn</h2><p>Short guides to ayanamsa, Rasi and Navamsa charts, Ashtakoota, Porutham
-and KP astrology.</p></a>
-</div>"""
-    return layout(s, "Horoscope and matching", body, active="")
+def home(s: Settings, lang: str = "en") -> str:
+    from .stars import NAK_SLUGS, RASI_SLUGS, names
+    lang = site_lang(lang)
+    stars = "".join(f'<li><a href="/learn/nakshatra/{NAK_SLUGS[i]}">{esc(names(lang, "nakshatra", i))}</a></li>'
+                    for i in range(27))
+    rasis = "".join(f'<li><a href="/learn/rasi/{RASI_SLUGS[i]}">{esc(names(lang, "rashi", i))}</a></li>'
+                    for i in range(12))
+    cards = "".join(f'<a class="card" href="{href}"><h2>{esc(T(lang, k))}</h2><p>{esc(T(lang, k + "_desc"))}</p></a>'
+                    for href, k in (("/horoscope", "card_h"), ("/match", "card_m"),
+                                    ("/learn/nakshatra-porutham-table", "card_table"), ("/learn", "card_learn")))
+    body = f"""<section class="hero"><h1>{esc(T(lang, "home_h1"))}</h1>
+<p>{esc(T(lang, "home_intro"))}</p></section>
+<div class="cards">{cards}</div>
+<h2><a href="/learn/nakshatras">{esc(T(lang, "stars_h"))}</a></h2>
+<p>{esc(T(lang, "stars_intro"))}</p>
+<ol class="star-list">{stars}</ol>
+<h2><a href="/learn/rasis">{esc(T(lang, "rasis_h"))}</a></h2>
+<ol class="star-list">{rasis}</ol>"""
+    m = meta(s, "home", lang)
+    ld = [{"@context": "https://schema.org", "@type": "WebSite", "name": s.site_name, "url": abs_url(s, lpath(lang, "/")),
+           "description": m["description"], "inLanguage": lang},
+          {"@context": "https://schema.org", **org_ld(s)}]
+    return layout(s, T(lang, "home_h1"), body, active="", path="/", lang=lang, ld=ld, **m)
+
+
+def ui_field(lang: str) -> str:
+    """Hidden field carrying the site language through the POST, so the result page keeps it."""
+    return f'<input type="hidden" name="ui" value="{esc(site_lang(lang))}">'
+
+
+def form_note(lang: str) -> str:
+    note = T(lang, "form_note")
+    return f'<p class="hint form-note">{esc(note)}</p>' if note else ""
 
 
 def horoscope_form(s: Settings, frm: HoroscopeForm, message: str | None = None,
-                   candidates: list[dict] | None = None) -> str:
+                   candidates: list[dict] | None = None, ui: str = "en") -> str:
+    ui = site_lang(ui)
     e = frm.errors
     b = frm.birth
     parts = "".join(
@@ -269,10 +394,10 @@ def horoscope_form(s: Settings, frm: HoroscopeForm, message: str | None = None,
     num = lambda k, lbl: text_field(k, lbl, "" if getattr(frm, k) is None else str(getattr(frm, k)), e,  # noqa: E731
                                     type_="number", maxlength=2, extra=' min="0" max="20" inputmode="numeric"')
     living = [("living", "Living"), ("deceased", "Deceased")]
-    body = f"""<h1>Horoscope</h1>
-<p class="lead">Fill in the birth details. Only the starred fields are required.</p>
+    body = f"""<h1>{esc(T(ui, "hform_h1"))}</h1>
+<p class="lead">{esc(T(ui, "hform_lead"))}</p>{form_note(ui)}
 {banner(message, candidates)}
-<form method="post" action="/horoscope" class="form" novalidate>
+<form method="post" action="/horoscope" class="form" novalidate lang="en">{ui_field(ui)}
 <fieldset><legend>Birth details</legend>
 {birth_fields("", b, e, with_sex=True)}
 </fieldset>
@@ -322,16 +447,20 @@ def horoscope_form(s: Settings, frm: HoroscopeForm, message: str | None = None,
 {turnstile_widget(s)}
 <p><button type="submit" class="primary">Generate horoscope</button></p>
 </form>"""
-    return layout(s, "Horoscope", body, active="horoscope", map_page=True, turnstile=True)
+    m = meta(s, "horoscope", ui)
+    return layout(s, T(ui, "nav_horoscope"), body, active="horoscope", map_page=True, turnstile=True,
+                  path="/horoscope", lang=ui, **m,
+                  ld=[app_ld(s, lpath(ui, "/horoscope"), f"{s.site_name} horoscope generator", m["description"])])
 
 
 def match_form(s: Settings, frm: MatchForm, message: str | None = None,
-               candidates: list[dict] | None = None) -> str:
+               candidates: list[dict] | None = None, ui: str = "en") -> str:
+    ui = site_lang(ui)
     e = frm.errors
-    body = f"""<h1>Marriage matching</h1>
-<p class="lead">Enter the bride's details on the left and the groom's on the right.</p>
+    body = f"""<h1>{esc(T(ui, "mform_h1"))}</h1>
+<p class="lead">{T(ui, "mform_lead")}</p>{form_note(ui)}
 {banner(message, candidates)}
-<form method="post" action="/match" class="form" novalidate>
+<form method="post" action="/match" class="form" novalidate lang="en">{ui_field(ui)}
 <div class="pair-form">
 <fieldset class="bride"><legend>Bride</legend>{birth_fields("b_", frm.bride, e, with_sex=False)}</fieldset>
 <fieldset class="groom"><legend>Groom</legend>{birth_fields("g_", frm.groom, e, with_sex=False)}</fieldset>
@@ -340,7 +469,10 @@ def match_form(s: Settings, frm: MatchForm, message: str | None = None,
 {turnstile_widget(s)}
 <p><button type="submit" class="primary">Check matching</button></p>
 </form>"""
-    return layout(s, "Marriage matching", body, active="match", map_page=True, turnstile=True)
+    m = meta(s, "match", ui)
+    return layout(s, T(ui, "nav_match"), body, active="match", map_page=True, turnstile=True, path="/match",
+                  lang=ui, **m,
+                  ld=[app_ld(s, lpath(ui, "/match"), f"{s.site_name} marriage matching", m["description"])])
 
 
 # ------------------------------------------------------------------ printable output
@@ -386,13 +518,14 @@ def astro_rows(lang: str, chart) -> list[tuple[str, str]]:
     ]
 
 
-def toolbar(back: str) -> str:
-    return (f'<div class="toolbar no-print"><button type="button" class="primary" data-action="print">Print</button>'
-            f'<button type="button" data-action="back">Edit details</button><a href="{back}">Start again</a>'
-            f'<span class="hint">Print on A5 paper with default margins and “Background graphics” on.</span></div>')
+def toolbar(back: str, ui: str = "en") -> str:
+    return (f'<div class="toolbar no-print"><button type="button" class="primary" data-action="print">'
+            f'{esc(T(ui, "print"))}</button><button type="button" data-action="back">{esc(T(ui, "edit"))}</button>'
+            f'<a href="{back}">{esc(T(ui, "again"))}</a><span class="hint">{esc(T(ui, "print_hint"))}</span></div>')
 
 
-def horoscope_result(s: Settings, frm: HoroscopeForm, place_label: str, chart, svgs: dict[str, str]) -> str:
+def horoscope_result(s: Settings, frm: HoroscopeForm, place_label: str, chart, svgs: dict[str, str],
+                     ui: str = "en") -> str:
     lang = frm.lang
     b = frm.birth
 
@@ -438,9 +571,9 @@ def horoscope_result(s: Settings, frm: HoroscopeForm, place_label: str, chart, s
     if "KP_TABLES" in svgs:
         sheets.append(f'<section class="sheet kp-sheet"><header class="sheet-head small"><h2>{esc(b.name)}</h2>'
                       f'<p>KP</p></header><figure class="kp">{svgs["KP_TABLES"]}</figure>{foot}</section>')
-    body = toolbar("/horoscope") + f'<div class="sheets" lang="{lang}">{"".join(sheets)}</div>'
+    body = toolbar("/horoscope", ui) + f'<div class="sheets" lang="{lang}">{"".join(sheets)}</div>'
     # generic title: names must not reach browser history, tab sync or any third-party script
-    return layout(s, "Your horoscope", body, active="horoscope", side_ad=False, ads=False)
+    return layout(s, T(ui, "res_h"), body, active="horoscope", side_ad=False, ads=False, lang=ui)
 
 
 def _pair_grid(lang: str, frm: MatchForm, labels: dict[str, str], charts: dict, svgs: dict[str, str]) -> str:
@@ -463,7 +596,7 @@ def _pair_grid(lang: str, frm: MatchForm, labels: dict[str, str], charts: dict, 
 
 
 def match_result(s: Settings, frm: MatchForm, labels: dict[str, str], charts: dict, svgs: dict[str, str],
-                 ashta: dict, poru: dict) -> str:
+                 ashta: dict, poru: dict, ui: str = "en") -> str:
     lang = frm.lang
     en = lang == "en"
     # bride first (left), groom second (right) — always
@@ -510,8 +643,8 @@ def match_result(s: Settings, frm: MatchForm, labels: dict[str, str], charts: di
 {pair}{foot}</section>"""
               f"""<section class="sheet"><header class="sheet-head small"><h2>{esc(title)}</h2></header>
 {ashta_html}{poru_html}{foot}</section>""")
-    body = toolbar("/match") + f'<div class="sheets" lang="{lang}">{sheets}</div>'
-    return layout(s, "Matching result", body, active="match", side_ad=False, ads=False)
+    body = toolbar("/match", ui) + f'<div class="sheets" lang="{lang}">{sheets}</div>'
+    return layout(s, T(ui, "res_m"), body, active="match", side_ad=False, ads=False, lang=ui)
 
 
 # ------------------------------------------------------------------ static content pages
@@ -539,124 +672,277 @@ CREDITS = [
 ]
 
 
-def credits(s: Settings) -> str:
-    rows = "".join(f'<tr><th><a href="{esc(u)}" rel="noopener">{esc(n)}</a></th><td>{esc(lic)}</td><td>{esc(use)}</td></tr>'
-                   for n, u, lic, use in CREDITS)
-    src = (f'<p>This site is free software under the GNU Affero General Public License v3. '
-           f'<a href="{esc(s.source_url)}" rel="noopener">Get the source code</a>.</p>' if s.source_url else
-           '<p>This site is free software under the GNU Affero General Public License v3.</p>')
-    body = f"""<h1>Credits</h1>{src}
-<p>Built with these projects and data sources — thank you to their authors.</p>
-<table class="grid credits"><thead><tr><th>Project</th><th>Licence</th><th>Used for</th></tr></thead><tbody>{rows}</tbody></table>
-<p class="small">Matching rules follow traditional Ashtakoota and South Indian Porutham practice; the exact tables are
-in the source code (<code>app/rules/v1.py</code>).</p>"""
-    return layout(s, "Credits", body, active="credits")
+def credits(s: Settings, lang: str = "en") -> str:
+    lang = site_lang(lang)
+
+    def use(text: str) -> str:
+        return text if lang == "en" else CREDIT_USES.get(text, (text, text))[SITE_LANGS.index(lang) - 1]
+    rows = "".join(f'<tr><th><a href="{esc(u)}" rel="noopener">{esc(n)}</a></th><td>{esc(lic)}</td><td>{esc(use(x))}</td></tr>'
+                   for n, u, lic, x in CREDITS)
+    src = (f'<p>{esc(T(lang, "agpl"))} <a href="{esc(s.source_url)}" rel="noopener">{esc(T(lang, "get_source"))}</a>.</p>'
+           if s.source_url else f'<p>{esc(T(lang, "agpl"))}</p>')
+    body = f"""<h1>{esc(T(lang, "credits_h1"))}</h1>{src}
+<p>{esc(T(lang, "thanks"))}</p>
+<table class="grid credits"><thead><tr><th>{esc(T(lang, "col_project"))}</th><th>{esc(T(lang, "col_licence"))}</th>
+<th>{esc(T(lang, "col_use"))}</th></tr></thead><tbody>{rows}</tbody></table>
+<p class="small">{T(lang, "rules_note", code="<code>app/rules/v1.py</code>")}</p>"""
+    return layout(s, T(lang, "credits_h1"), body, active="credits", path="/credits", lang=lang,
+                  **meta(s, "credits", lang))
 
 
-def privacy(s: Settings) -> str:
-    contact = f' Write to <a href="mailto:{esc(s.contact_email)}">{esc(s.contact_email)}</a>.' if s.contact_email else ""
+# privacy text: key → (en, ta, hi); {link} and {contact} are filled in below
+_PRIVACY = {
+    "h1": ("Privacy", "தனியுரிமை", "गोपनीयता"),
+    "intro": (
+        "<b>We don't keep what you enter.</b> Names, birth details, family details and descriptions are used only to "
+        "build the page you asked for, then discarded. They are not stored, logged or sent to advertisers.",
+        "<b>நீங்கள் உள்ளிடுவதை நாங்கள் வைத்துக்கொள்வதில்லை.</b> பெயர்கள், பிறப்பு விவரங்கள், குடும்ப விவரங்கள், "
+        "விவரணைகள் நீங்கள் கேட்ட பக்கத்தை உருவாக்க மட்டுமே பயன்படுத்தப்பட்டு, பின் நீக்கப்படுகின்றன. அவை "
+        "சேமிக்கப்படுவதோ பதிவு செய்யப்படுவதோ விளம்பரதாரர்களுக்கு அனுப்பப்படுவதோ இல்லை.",
+        "<b>आपकी दी हुई जानकारी हम नहीं रखते।</b> नाम, जन्म विवरण, परिवार का विवरण और परिचय केवल आपका माँगा हुआ "
+        "पृष्ठ बनाने के लिए इस्तेमाल होते हैं, फिर हटा दिए जाते हैं। इन्हें न सहेजा जाता है, न लॉग किया जाता है, न "
+        "विज्ञापनदाताओं को भेजा जाता है।"),
+    "h_processed": ("What is processed", "எவை செயலாக்கப்படுகின்றன", "क्या प्रोसेस होता है"),
+    "p_form": ("Your form entries — only while your page is generated.",
+               "நீங்கள் படிவத்தில் உள்ளிடுபவை — உங்கள் பக்கம் உருவாக்கப்படும் நேரத்தில் மட்டும்.",
+               "फ़ॉर्म में भरी जानकारी — केवल आपका पृष्ठ बनते समय।"),
+    "p_ip": ("Your IP address — briefly, in memory, to limit abuse (too many requests).",
+             "உங்கள் IP முகவரி — துஷ்பிரயோகத்தை (அதிகப்படியான கோரிக்கைகள்) தடுக்க, சிறிது நேரம், நினைவகத்தில் மட்டும்.",
+             "आपका IP पता — दुरुपयोग (बहुत अधिक अनुरोध) रोकने के लिए, थोड़ी देर, केवल मेमोरी में।"),
+    "p_place": ("Place search — the letters you type are sent to our own server to suggest places.",
+                "இடத் தேடல் — நீங்கள் தட்டச்சு செய்யும் எழுத்துகள் இடங்களைப் பரிந்துரைக்க எங்கள் சேவையகத்துக்கு "
+                "மட்டுமே அனுப்பப்படுகின்றன.",
+                "स्थान खोज — आपके टाइप किए अक्षर स्थान सुझाने के लिए केवल हमारे अपने सर्वर पर भेजे जाते हैं।"),
+    "h_third": ("Third parties", "மூன்றாம் தரப்பினர்", "तृतीय पक्ष"),
+    "t_cloud": ("<b>Google Cloud</b> (Cloud Run and Firebase Hosting, Mumbai region) hosts the site.",
+                "<b>Google Cloud</b> (Cloud Run, Firebase Hosting, மும்பை மண்டலம்) இந்தத் தளத்தை இயக்குகிறது.",
+                "<b>Google Cloud</b> (Cloud Run और Firebase Hosting, मुंबई क्षेत्र) साइट को होस्ट करता है।"),
+    "t_cf": ("<b>Cloudflare</b> runs the Turnstile bot check on the forms.",
+             "<b>Cloudflare</b> படிவங்களில் Turnstile பாதுகாப்புச் சோதனையை இயக்குகிறது.",
+             "<b>Cloudflare</b> फ़ॉर्म पर Turnstile बॉट जाँच चलाता है।"),
+    "t_ads": ("<b>Google AdSense</b> shows ads and uses cookies for that. You can manage ad personalisation at {link}.",
+              "<b>Google AdSense</b> விளம்பரங்களைக் காட்டுகிறது; அதற்காகக் குக்கீகளைப் பயன்படுத்துகிறது. விளம்பரத் "
+              "தனிப்பயனாக்கத்தை {link}-இல் மாற்றலாம்.",
+              "<b>Google AdSense</b> विज्ञापन दिखाता है और इसके लिए कुकीज़ इस्तेमाल करता है। विज्ञापन वैयक्तिकरण {link} "
+              "पर बदल सकते हैं।"),
+    "t_ga": ("<b>Google Analytics</b> counts visits to our pages (which pages, roughly where from, which device) using "
+             "cookies. It does not run on the pages that show your horoscope or matching result. You can opt out with "
+             "{link}.",
+             "<b>Google Analytics</b> குக்கீகளைக் கொண்டு எங்கள் பக்கங்களுக்கான வருகைகளைக் கணக்கிடுகிறது (எந்தப் "
+             "பக்கங்கள், தோராயமாக எங்கிருந்து, எந்தச் சாதனம்). உங்கள் ஜாதகம் அல்லது பொருத்த முடிவைக் காட்டும் "
+             "பக்கங்களில் இது இயங்காது. {link} மூலம் விலகலாம்.",
+             "<b>Google Analytics</b> कुकीज़ से हमारे पृष्ठों पर विज़िट गिनता है (कौन-से पृष्ठ, मोटे तौर पर कहाँ से, "
+             "कौन-सा डिवाइस)। यह आपकी कुंडली या मिलान परिणाम वाले पृष्ठों पर नहीं चलता। {link} से बाहर हो सकते हैं।"),
+    "ga_optout": ("Google's opt-out add-on", "Google-இன் விலகல் நீட்சி", "Google के ऑप्ट-आउट ऐड-ऑन"),
+    "t_fonts": ("<b>Google Fonts</b> and <b>unpkg</b> serve fonts and the map library; <b>OpenFreeMap</b> serves the map "
+                "images when you use “Pick on map”.",
+                "<b>Google Fonts</b>, <b>unpkg</b> எழுத்துருக்களையும் வரைபட நிரலகத்தையும் வழங்குகின்றன; “வரைபடத்தில் "
+                "தேர்வு” பயன்படுத்தும்போது <b>OpenFreeMap</b> வரைபடப் படங்களை வழங்குகிறது.",
+                "<b>Google Fonts</b> और <b>unpkg</b> फ़ॉन्ट और मानचित्र लाइब्रेरी देते हैं; “मानचित्र पर चुनें” इस्तेमाल "
+                "करने पर <b>OpenFreeMap</b> मानचित्र चित्र देता है।"),
+    "none_get": ("None of them receive your form entries. Pages that show your horoscope or matching result carry no "
+                 "ads or analytics.",
+                 "இவர்கள் யாருக்கும் உங்கள் படிவ விவரங்கள் கிடைப்பதில்லை. உங்கள் ஜாதகம் அல்லது பொருத்த முடிவைக் "
+                 "காட்டும் பக்கங்களில் விளம்பரங்களோ பகுப்பாய்வோ இல்லை.",
+                 "इनमें से किसी को आपकी फ़ॉर्म जानकारी नहीं मिलती। आपकी कुंडली या मिलान परिणाम दिखाने वाले पृष्ठों पर "
+                 "कोई विज्ञापन या एनालिटिक्स नहीं होता।"),
+    "h_choices": ("Your choices", "உங்கள் தேர்வுகள்", "आपके विकल्प"),
+    "choices": ("Because nothing is stored, there is nothing to delete. Printing or saving the page is up to you.",
+                "எதுவும் சேமிக்கப்படாததால் நீக்க வேண்டியதும் எதுவுமில்லை. பக்கத்தை அச்சிடுவதும் சேமிப்பதும் உங்கள் "
+                "விருப்பம்.",
+                "कुछ भी सहेजा नहीं जाता, इसलिए हटाने को कुछ नहीं है। पृष्ठ प्रिंट करना या सहेजना आपकी मर्ज़ी है।"),
+    "write": ("Write to {email}.", "தொடர்புக்கு: {email}.", "संपर्क: {email}।"),
+}
+
+
+def privacy(s: Settings, lang: str = "en") -> str:
+    lang = site_lang(lang)
+    i = SITE_LANGS.index(lang)
+    P = lambda k: _PRIVACY[k][i]  # noqa: E731  (our own text; contains markup)
+    contact = (" " + P("write").format(email=f'<a href="mailto:{esc(s.contact_email)}">{esc(s.contact_email)}</a>')
+               if s.contact_email else "")
     # list only the services that are actually switched on
-    ads_li = ('<li><b>Google AdSense</b> shows ads and uses cookies for that. You can manage ad personalisation at '
-              '<a href="https://adssettings.google.com/" rel="noopener">adssettings.google.com</a>.</li>'
-              if s.ads_enabled else "")
-    ga_li = ('<li><b>Google Analytics</b> counts visits to our pages (which pages, roughly where from, which device) '
-             'using cookies. It does not run on the pages that show your horoscope or matching result. You can opt '
-             'out with <a href="https://tools.google.com/dlpage/gaoptout" rel="noopener">Google\'s opt-out add-on</a>.</li>'
-             if s.analytics_enabled else "")
-    body = f"""<h1>Privacy</h1>
-<p><b>We don't keep what you enter.</b> Names, birth details, family details and descriptions are used only to build
-the page you asked for, then discarded. They are not stored, logged or sent to advertisers.</p>
-<h2>What is processed</h2>
-<ul>
-<li>Your form entries — only while your page is generated.</li>
-<li>Your IP address — briefly, in memory, to limit abuse (too many requests).</li>
-<li>Place search — the letters you type are sent to our own server to suggest places.</li>
-</ul>
-<h2>Third parties</h2>
-<ul>
-<li><b>Google Cloud</b> (Cloud Run and Firebase Hosting, Mumbai region) hosts the site.</li>
-<li><b>Cloudflare</b> runs the Turnstile bot check on the forms.</li>
-{ads_li}{ga_li}<li><b>Google Fonts</b> and <b>unpkg</b> serve fonts and the map library; <b>OpenFreeMap</b> serves the map images
-when you use “Pick on map”.</li>
-</ul>
-<p>None of them receive your form entries. Pages that show your horoscope or matching result carry no ads or
-analytics.</p>
-<h2>Your choices</h2>
-<p>Because nothing is stored, there is nothing to delete. Printing or saving the page is up to you.{contact}</p>"""
-    return layout(s, "Privacy", body)
+    ads_link = '<a href="https://adssettings.google.com/" rel="noopener">adssettings.google.com</a>'
+    ads_li = f'<li>{P("t_ads").format(link=ads_link)}</li>' if s.ads_enabled else ""
+    ga_link = f'<a href="https://tools.google.com/dlpage/gaoptout" rel="noopener">{P("ga_optout")}</a>'
+    ga_li = f'<li>{P("t_ga").format(link=ga_link)}</li>' if s.analytics_enabled else ""
+    body = f"""<h1>{P("h1")}</h1>
+<p>{P("intro")}</p>
+<h2>{P("h_processed")}</h2>
+<ul><li>{P("p_form")}</li><li>{P("p_ip")}</li><li>{P("p_place")}</li></ul>
+<h2>{P("h_third")}</h2>
+<ul><li>{P("t_cloud")}</li><li>{P("t_cf")}</li>{ads_li}{ga_li}<li>{P("t_fonts")}</li></ul>
+<p>{P("none_get")}</p>
+<h2>{P("h_choices")}</h2>
+<p>{P("choices")}{contact}</p>"""
+    return layout(s, P("h1"), body, path="/privacy", lang=lang, **meta(s, "privacy", lang))
 
 
-def terms(s: Settings) -> str:
-    src = f' (<a href="{esc(s.source_url)}" rel="noopener">source code</a>)' if s.source_url else ""
-    body = f"""<h1>Terms of use</h1>
-<ul>
-<li>The site is free to use. It is provided as is, without warranty.</li>
-<li>Astrological results are for guidance only. Please consult a qualified astrologer before making decisions.
-Results depend on the accuracy of the birth time and place you enter.</li>
-<li>Don't use automated tools to send large numbers of requests.</li>
-<li>The software is licensed under the GNU Affero General Public License v3{src}.</li>
-</ul>"""
-    return layout(s, "Terms", body)
-
-
-def error_page(s: Settings, title: str, message: str, status_hint: str = "") -> str:
-    body = f'<h1>{esc(title)}</h1><p>{esc(message)}</p><p>{esc(status_hint)}</p><p><a href="/">Home</a></p>'
-    return layout(s, title, body)
-
-
-# ------------------------------------------------------------------ roadmap
-UPCOMING = [
-    ("In review", "Manglik (Chevvai) dosham check",
-     "Shows whether Mars causes dosham for the bride and the groom, and whether it is cancelled. The cancellation "
-     "rules are being checked with an astrologer before this appears in matching."),
-    ("In review", "KP 7th cusp analysis",
-     "Marriage matching through the 7th house cusp in KP astrology: its sub-lord and the houses it signifies. "
-     "Results are being compared with an astrologer's readings."),
-    ("Planned", "KP Dasavidha Porutham",
-     "The ten matching checks done the KP way, using star lords and sub-lords instead of the Moon's star alone."),
-    ("Planned", "Forms in your language",
-     "Results already print in English, Tamil, Telugu, Malayalam, Kannada and Hindi; the forms themselves will "
-     "follow."),
-    ("In review", "Better Telugu, Malayalam and Kannada",
-     "The labels in these languages are being reviewed by native speakers."),
-    ("Exploring", "More matching methods",
-     "Further checks astrologers use alongside Porutham and Ashtakoota, for example Papa Samyam (balance of "
-     "malefic influence) and Dasa Sandhi (timing of major periods)."),
-    ("Exploring", "Horoscope templates",
-     "A choice of print layouts and designs for your horoscope, from traditional to modern."),
-    ("Exploring", "Share on WhatsApp and email",
-     "Save your horoscope or matching result as a PDF and send it straight from your phone. Your details will still "
-     "not be stored on our side."),
-    ("Exploring", "AI assistant",
-     "Ask questions about your chart or matching result in plain language and get them explained, in your "
-     "language."),
+_TERMS = [
+    ("The site is free to use. It is provided as is, without warranty.",
+     "இந்தத் தளம் இலவசம். எந்த உத்தரவாதமும் இன்றி உள்ளபடியே வழங்கப்படுகிறது.",
+     "साइट का उपयोग मुफ़्त है। यह जैसी है वैसी दी जाती है, बिना किसी वारंटी के।"),
+    ("Astrological results are for guidance only. Please consult a qualified astrologer before making decisions. "
+     "Results depend on the accuracy of the birth time and place you enter.",
+     "ஜோதிட முடிவுகள் வழிகாட்டுதலுக்கு மட்டுமே. முடிவெடுக்கும் முன் தகுதியான ஜோதிடரை அணுகவும். முடிவுகள் நீங்கள் "
+     "உள்ளிடும் பிறந்த நேரம், இடத்தின் துல்லியத்தைப் பொறுத்தவை.",
+     "ज्योतिषीय परिणाम केवल मार्गदर्शन के लिए हैं। निर्णय से पहले किसी योग्य ज्योतिषी से सलाह लें। परिणाम आपके दिए "
+     "जन्म समय और स्थान की सटीकता पर निर्भर हैं।"),
+    ("Don't use automated tools to send large numbers of requests.",
+     "அதிக எண்ணிக்கையில் கோரிக்கைகளை அனுப்பத் தானியங்கிக் கருவிகளைப் பயன்படுத்த வேண்டாம்.",
+     "बहुत सारे अनुरोध भेजने के लिए स्वचालित टूल का उपयोग न करें।"),
+    ("The software is licensed under the GNU Affero General Public License v3{src}.",
+     "இந்த மென்பொருள் GNU Affero General Public License v3 உரிமத்தின் கீழ் வழங்கப்படுகிறது{src}.",
+     "सॉफ़्टवेयर GNU Affero General Public License v3 के तहत लाइसेंस प्राप्त है{src}।"),
 ]
 
 
-def upcoming(s: Settings) -> str:
-    items = "".join(f'<li class="card"><span class="tag">{esc(st)}</span><h2>{esc(t)}</h2><p>{esc(d)}</p></li>'
-                    for st, t, d in UPCOMING)
-    body = (f'<h1>Coming soon</h1><p class="lead">What we are working on for {esc(s.site_name)}. '
-            f'Features appear only after their results have been checked against an astrologer\'s.</p>'
+def terms(s: Settings, lang: str = "en") -> str:
+    lang = site_lang(lang)
+    i = SITE_LANGS.index(lang)
+    src = (f' (<a href="{esc(s.source_url)}" rel="noopener">{esc(T(lang, "source_code"))}</a>)'
+           if s.source_url else "")
+    items = "".join(f"<li>{row[i].format(src=src) if '{src}' in row[i] else row[i]}</li>" for row in _TERMS)
+    body = f'<h1>{esc(T(lang, "terms_h1"))}</h1><ul>{items}</ul>'
+    return layout(s, T(lang, "terms_h1"), body, path="/terms", lang=lang, **meta(s, "terms", lang))
+
+
+def error_page(s: Settings, title: str, message: str, status_hint: str = "", lang: str = "en") -> str:
+    body = (f'<h1>{esc(title)}</h1><p>{esc(message)}</p><p>{esc(status_hint)}</p>'
+            f'<p><a href="/">{esc(T(lang, "home"))}</a></p>')
+    return layout(s, title, body, lang=lang)
+
+
+def not_found(s: Settings, lang: str = "en") -> str:
+    return error_page(s, T(lang, "not_found"), T(lang, "no_page"), lang=lang)
+
+
+# ------------------------------------------------------------------ roadmap
+UPCOMING = [  # (status key, {lang: (title, description)})
+    ("st_review", {
+        "en": ("Manglik (Chevvai) dosham check",
+               "Shows whether Mars causes dosham for the bride and the groom, and whether it is cancelled. The "
+               "cancellation rules are being checked with an astrologer before this appears in matching."),
+        "ta": ("செவ்வாய் தோஷம்",
+               "மணமகள், மணமகன் ஜாதகங்களில் செவ்வாய் தோஷம் உள்ளதா, அது நிவர்த்தி ஆகிறதா என்பதைக் காட்டும். நிவர்த்தி "
+               "விதிகள் ஜோதிடருடன் சரிபார்க்கப்பட்டு வருகின்றன."),
+        "hi": ("मांगलिक दोष (मंगल दोष)",
+               "वर और वधू की कुंडली में मंगल दोष है या नहीं, और क्या वह रद्द होता है — यह दिखाएगा। रद्द होने के नियम "
+               "ज्योतिषी के साथ जाँचे जा रहे हैं।")}),
+    ("st_review", {
+        "en": ("KP 7th cusp analysis",
+               "Marriage matching through the 7th house cusp in KP astrology: its sub-lord and the houses it signifies. "
+               "Results are being compared with an astrologer's readings."),
+        "ta": ("KP 7-ஆம் பாவ முனை ஆய்வு",
+               "KP முறையில் 7-ஆம் பாவ முனையின் உப அதிபதி, அது குறிக்கும் பாவங்கள் மூலம் திருமணப் பொருத்தம். முடிவுகள் "
+               "ஜோதிடரின் கணிப்புகளுடன் ஒப்பிடப்பட்டு வருகின்றன."),
+        "hi": ("KP सप्तम भाव संधि विश्लेषण",
+               "KP ज्योतिष में सप्तम भाव संधि (कस्प) के उप-स्वामी और उसके संकेतित भावों से विवाह मिलान। परिणाम "
+               "ज्योतिषी की गणनाओं से मिलाए जा रहे हैं।")}),
+    ("st_planned", {
+        "en": ("KP Dasavidha Porutham",
+               "The ten matching checks done the KP way, using star lords and sub-lords instead of the Moon's star "
+               "alone."),
+        "ta": ("KP தசவித பொருத்தம்",
+               "சந்திரனின் நட்சத்திரம் மட்டுமின்றி நட்சத்திர அதிபதி, உப அதிபதிகளைக் கொண்டு KP முறையில் பத்துப் "
+               "பொருத்தங்கள்."),
+        "hi": ("KP दशविध पोरुथम",
+               "केवल चंद्र नक्षत्र नहीं, बल्कि नक्षत्र स्वामी और उप-स्वामी से KP पद्धति के दस मिलान।")}),
+    ("st_planned", {
+        "en": ("Forms in your language",
+               "Results already print in English, Tamil, Telugu, Malayalam, Kannada and Hindi; the forms themselves "
+               "will follow."),
+        "ta": ("உங்கள் மொழியில் படிவங்கள்",
+               "முடிவுகள் ஏற்கெனவே ஆங்கிலம், தமிழ், தெலுங்கு, மலையாளம், கன்னடம், இந்தியில் அச்சாகின்றன; படிவங்களும் "
+               "விரைவில்."),
+        "hi": ("आपकी भाषा में फ़ॉर्म",
+               "परिणाम पहले से अंग्रेज़ी, तमिल, तेलुगु, मलयालम, कन्नड़ और हिंदी में प्रिंट होते हैं; फ़ॉर्म भी जल्द।")}),
+    ("st_review", {
+        "en": ("Better Telugu, Malayalam and Kannada",
+               "The labels in these languages are being reviewed by native speakers."),
+        "ta": ("தெலுங்கு, மலையாளம், கன்னடம் — மேம்பாடு",
+               "இந்த மொழிகளிலுள்ள சொற்கள் அந்தந்த மொழி பேசுபவர்களால் சரிபார்க்கப்பட்டு வருகின்றன."),
+        "hi": ("बेहतर तेलुगु, मलयालम और कन्नड़", "इन भाषाओं के शब्दों की समीक्षा मूल भाषी कर रहे हैं।")}),
+    ("st_exploring", {
+        "en": ("More matching methods",
+               "Further checks astrologers use alongside Porutham and Ashtakoota, for example Papa Samyam (balance of "
+               "malefic influence) and Dasa Sandhi (timing of major periods)."),
+        "ta": ("மேலும் பொருத்த முறைகள்",
+               "பொருத்தம், அஷ்டகூடத்துடன் ஜோதிடர்கள் பார்க்கும் பிற ஆய்வுகள் — எ.கா. பாப சாம்யம் (பாவ கிரகச் "
+               "சமநிலை), தசா சந்தி (தசைகள் மாறும் காலம்)."),
+        "hi": ("और मिलान पद्धतियाँ",
+               "पोरुथम और अष्टकूट के साथ ज्योतिषी जो और जाँच करते हैं, जैसे पाप साम्य (पाप ग्रहों का संतुलन) और दशा "
+               "संधि (महादशाओं का समय)।")}),
+    ("st_exploring", {
+        "en": ("Horoscope templates", "A choice of print layouts and designs for your horoscope, from traditional to "
+               "modern."),
+        "ta": ("ஜாதக வடிவமைப்புகள்", "பாரம்பரியத்திலிருந்து நவீனம் வரை, உங்கள் ஜாதகத்துக்குப் பல அச்சு வடிவமைப்புகள்."),
+        "hi": ("कुंडली टेम्पलेट", "पारंपरिक से आधुनिक तक, आपकी कुंडली के लिए कई प्रिंट डिज़ाइन।")}),
+    ("st_exploring", {
+        "en": ("Share on WhatsApp and email",
+               "Save your horoscope or matching result as a PDF and send it straight from your phone. Your details will "
+               "still not be stored on our side."),
+        "ta": ("WhatsApp, மின்னஞ்சலில் பகிர",
+               "ஜாதகம் அல்லது பொருத்த முடிவை PDF ஆகச் சேமித்து உங்கள் கைப்பேசியிலிருந்தே அனுப்பலாம். அப்போதும் "
+               "உங்கள் விவரங்கள் எங்களிடம் சேமிக்கப்படாது."),
+        "hi": ("WhatsApp और ईमेल पर भेजें",
+               "अपनी कुंडली या मिलान परिणाम PDF के रूप में सहेजकर सीधे अपने फ़ोन से भेजें। तब भी आपका विवरण हमारे पास "
+               "सहेजा नहीं जाएगा।")}),
+    ("st_exploring", {
+        "en": ("AI assistant",
+               "Ask questions about your chart or matching result in plain language and get them explained, in your "
+               "language."),
+        "ta": ("AI உதவியாளர்",
+               "உங்கள் ஜாதகம் அல்லது பொருத்த முடிவு பற்றி எளிய மொழியில் கேள்வி கேட்டு, உங்கள் மொழியிலேயே விளக்கம் "
+               "பெறலாம்."),
+        "hi": ("AI सहायक", "अपनी कुंडली या मिलान परिणाम के बारे में सरल भाषा में सवाल पूछें और अपनी भाषा में जवाब पाएँ।")}),
+]
+
+
+def upcoming(s: Settings, lang: str = "en") -> str:
+    lang = site_lang(lang)
+    items = "".join(f'<li class="card"><span class="tag">{esc(T(lang, st))}</span><h2>{esc(text[lang][0])}</h2>'
+                    f'<p>{esc(text[lang][1])}</p></li>' for st, text in UPCOMING)
+    body = (f'<h1>{esc(T(lang, "up_h1"))}</h1><p class="lead">{esc(T(lang, "up_lead", site=s.site_name))}</p>'
             f'<ul class="cards roadmap">{items}</ul>')
-    return layout(s, "Coming soon", body)
+    return layout(s, T(lang, "up_h1"), body, path="/upcoming", lang=lang, **meta(s, "upcoming", lang))
 
 
 # ------------------------------------------------------------------ Learn section
-def learn_index(s: Settings) -> str:
+def learn_index(s: Settings, lang: str = "en") -> str:
+    lang = site_lang(lang)
     cards = "".join(f'<a class="card" href="/learn/{a.slug}"><h2>{esc(a.title)}</h2><p>{esc(a.summary)}</p></a>'
-                    for a in ARTICLES)
-    body = (f'<h1>Learn</h1><p class="lead">Short guides to the charts and matching methods used on {esc(s.site_name)}.'
-            f'</p><div class="cards">{cards}</div>')
-    return layout(s, "Learn", body, active="learn")
+                    for a in ARTICLES_BY_LANG[lang])
+    ref = "".join(f'<a class="card" href="{href}"><h2>{esc(T(lang, title))}</h2><p>{esc(T(lang, desc))}</p></a>'
+                  for href, title, desc in (("/learn/nakshatra-porutham-table", "card_table", "ref_table_desc"),
+                                            ("/learn/nakshatras", "stars_h", "ref_naks_desc"),
+                                            ("/learn/rasis", "rasis_h", "ref_rasis_desc")))
+    body = (f'<h1>{esc(T(lang, "learn_h1"))}</h1><p class="lead">{esc(T(lang, "learn_lead", site=s.site_name))}</p>'
+            f'<h2>{esc(T(lang, "guides"))}</h2><div class="cards">{cards}</div>'
+            f'<h2>{esc(T(lang, "reference"))}</h2><div class="cards">{ref}</div>')
+    ld = [breadcrumb_ld(s, [(T(lang, "home"), lpath(lang, "/")), (T(lang, "learn_h1"), lpath(lang, "/learn"))])]
+    return layout(s, T(lang, "learn_h1"), body, active="learn", path="/learn", lang=lang, ld=ld,
+                  **meta(s, "learn", lang))
 
 
-def learn_article(s: Settings, a: Article) -> str:
-    others = "".join(f'<li><a href="/learn/{o.slug}">{esc(o.title)}</a></li>' for o in ARTICLES if o.slug != a.slug)
-    body = (f'<article class="article"><p class="crumb"><a href="/learn">Learn</a></p><h1>{esc(a.title)}</h1>'
-            f'<p class="lead">{esc(a.summary)}</p>{a.body}'
-            f'<p class="cta"><a class="button primary" href="/horoscope">Make a horoscope</a> '
-            f'<a class="button" href="/match">Check matching</a></p>'
-            f'<p class="small">For guidance only. Please consult an astrologer before taking decisions.</p>'
-            f'<h2>More guides</h2><ul>{others}</ul></article>')
-    return layout(s, a.title, body, active="learn")
+def article_by_slug(lang: str, slug: str) -> Article | None:
+    return next((a for a in ARTICLES_BY_LANG[site_lang(lang)] if a.slug == slug), None)
+
+
+def learn_article(s: Settings, a: Article, lang: str = "en") -> str:
+    lang = site_lang(lang)
+    others = "".join(f'<li><a href="/learn/{o.slug}">{esc(o.title)}</a></li>'
+                     for o in ARTICLES_BY_LANG[lang] if o.slug != a.slug)
+    body = (f'<article class="article"><p class="crumb"><a href="/learn">{esc(T(lang, "learn_h1"))}</a></p>'
+            f'<h1>{esc(a.title)}</h1><p class="lead">{esc(a.summary)}</p>{a.body}'
+            f'<p class="cta"><a class="button primary" href="/horoscope">{esc(T(lang, "cta_h"))}</a> '
+            f'<a class="button" href="/match">{esc(T(lang, "cta_m"))}</a></p>'
+            f'<p class="small">{esc(T(lang, "guidance"))}</p>'
+            f'<h2>{esc(T(lang, "more_guides"))}</h2><ul>{others}</ul></article>')
+    path = f"/learn/{a.slug}"
+    desc = a.description or a.summary
+    ld = [article_ld(s, lpath(lang, path), a.title, desc, lang),
+          breadcrumb_ld(s, [(T(lang, "home"), lpath(lang, "/")), (T(lang, "learn_h1"), lpath(lang, "/learn")),
+                            (a.title, lpath(lang, path))])]
+    return layout(s, a.title, body, active="learn", path=path, lang=lang, description=desc,
+                  page_title=f"{a.seo_title or a.title} | {s.site_name}", ld=ld, og_type="article")

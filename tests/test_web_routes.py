@@ -23,7 +23,10 @@ def fresh_limiter():
     routes._limiter = None
 
 
-@pytest.mark.parametrize("path", ["/", "/horoscope", "/match", "/credits", "/privacy", "/terms", "/learn", "/upcoming",
+@pytest.mark.parametrize("path", ["/", "/horoscope", "/match", "/credits", "/privacy", "/terms", "/learn", "/upcoming", "/ta", "/hi", "/ta/learn/porutham", "/hi/learn/ashtakoota", "/ta/match",
+                                  "/hi/learn/nakshatra/rohini", "/ta/learn/nakshatra-porutham-table",
+                                  "/learn/nakshatras", "/learn/rasis", "/learn/nakshatra-porutham-table",
+                                  "/learn/nakshatra/rohini", "/learn/rasi/mesha", "/horoscope?lang=ta",
                                   "/learn/ayanamsa", "/learn/porutham", "/sitemap.xml",
                                   "/static/site.css", "/static/site.js"])
 def test_pages_load(path):
@@ -89,3 +92,14 @@ def test_ads_txt(monkeypatch):
 
 def test_unknown_guide_404():
     assert client.get("/learn/nope").status_code == 404
+
+
+def test_old_hindi_url_redirects():
+    r = client.get("/hi/learn/guna-milan", follow_redirects=False)
+    assert r.status_code == 301 and r.headers["location"] == "/hi/learn/ashtakoota"
+
+
+def test_language_pages_and_404():
+    assert "ஜாதகம்" in client.get("/ta/horoscope").text
+    assert client.get("/ta/learn/no-such-guide").status_code == 404
+    assert client.get("/ta/learn/nakshatra/no-such-star").status_code == 404

@@ -37,7 +37,14 @@
     }
   });
   document.addEventListener("keydown", function (e) {
-    if (e.key === "Escape") document.querySelectorAll(".tip.open").forEach(function (x) { x.classList.remove("open"); });
+    if (e.key === "Escape") {
+      document.querySelectorAll(".tip.open").forEach(function (x) { x.classList.remove("open"); });
+      document.querySelectorAll(".lang-menu[open]").forEach(function (d) { d.open = false; });
+    }
+  });
+  // language menu: close when clicking anywhere else
+  document.addEventListener("click", function (e) {
+    document.querySelectorAll(".lang-menu[open]").forEach(function (d) { if (!d.contains(e.target)) d.open = false; });
   });
   document.addEventListener("click", function (e) {
     if (!e.target.closest(".tip")) document.querySelectorAll(".tip.open").forEach(function (x) { x.classList.remove("open"); });
