@@ -278,15 +278,16 @@ def test_hreflang_links_are_reciprocal():
             if lang != "x-default":
                 assert f'href="https://astrorealm.in{path}"' in pages[href], (path, href)
     assert '<html lang="ta">' in pages["/ta"] and "ஜாதகம்" in pages["/ta"]
-    assert len(pages) == 3 * 57  # same 57 pages in each language
+    from app.web.ui import SITE_LANGS
+    assert len(pages) == len(SITE_LANGS) * 57  # same 57 pages in each language
 
 
 def test_language_is_kept_across_links():
     import re
-    from app.web.ui import LOCALIZED
+    from app.web.ui import LOCALIZED, SITE_LANGS  # noqa: F401
     s = Settings(base_url="https://astrorealm.in")
     for url, html in _all_public_pages(s).items():
-        lang = "ta" if url.startswith("/ta") else "hi" if url.startswith("/hi") else "en"
+        lang = url.split("/")[1] if url.split("/")[1] in SITE_LANGS else "en"
         if lang == "en":
             continue
         for href in re.findall(r'(?<!hreflang="[a-z]{2}" )href="(/[^"#?]*)', html):
@@ -298,11 +299,10 @@ def test_language_is_kept_across_links():
 
 def test_same_home_layout_in_every_language():
     s = Settings()
-    shapes = []
-    for lang in ("en", "ta", "hi"):
+    from app.web.ui import SITE_LANGS
+    for lang in SITE_LANGS:
         h = views.home(s, lang)
-        shapes.append((h.count('class="card"'), h.count("/learn/nakshatra/"), h.count("/learn/rasi/")))
-    assert shapes[0] == shapes[1] == shapes[2] == (4, 27, 12)
+        assert (h.count('class="card"'), h.count("/learn/nakshatra/"), h.count("/learn/rasi/")) == (4, 27, 12), lang
 
 
 def test_result_page_follows_site_language():
@@ -337,7 +337,21 @@ def test_star_table_agrees_with_the_matcher():
 def test_form_language_preselect():
     page = views.horoscope_form(Settings(), HoroscopeForm(lang="ta"), ui="ta")
     assert 'value="ta" selected' in page and 'name="ui" value="ta"' in page
-    assert "Name" in page and "உங்கள் ஜாதகம் கணிக்க" in page  # form labels stay English, the page around it is Tamil
+    assert "உங்கள் ஜாதகம் கணிக்க" in page and "<legend>Birth details</legend>" not in page  # the form is Tamil too
+
+
+def test_forms_are_in_the_page_language():
+    import re
+    from app.web.ui import SITE_LANGS
+    for lang in SITE_LANGS:
+        for page in (views.horoscope_form(Settings(), HoroscopeForm(), ui=lang),
+                     views.match_form(Settings(), MatchForm(), ui=lang)):
+            form = page[page.index("<form"):page.index("</form>")]
+            legends = re.findall(r"<legend>(.*?)</legend>", form)
+            assert legends, lang
+            if lang != "en":
+                assert not any(re.fullmatch(r"[A-Za-z ]+", x) for x in legends), (lang, legends)
+                assert "Generate horoscope" not in form and "Check matching" not in form, lang
 
 
 def test_ui_strings_complete():
@@ -347,7 +361,13 @@ def test_ui_strings_complete():
         assert en is not None and ta is not None and hi is not None, k
         assert (ta and hi) or k == "form_note", k
     for key, by_lang in ui.PAGE_META.items():
-        assert set(by_lang) == set(ui.SITE_LANGS), key
+        assert set(by_lang) == set(ui.BASE_LANGS), key
+    for lang in ("te", "ml", "kn"):
+        ex = ui._extra(lang)
+        assert set(ex.UI) == set(ui._T) and set(ex.META) == set(ui.PAGE_META), lang
+        assert all(ex.UI[k] or k == "form_note" for k in ex.UI), lang
+        for key in ui.PAGE_META:
+            assert ui.page_meta(key, lang) != ui.page_meta(key, "en"), (lang, key)
 
 
 def test_language_menu_is_a_dropdown_of_links():

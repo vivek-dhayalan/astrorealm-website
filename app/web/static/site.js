@@ -15,6 +15,8 @@
     try { if (val === undefined) return localStorage.getItem(key); localStorage.setItem(key, val); }
     catch (e) { return null; }
   }
+  var tNear = document.body.getAttribute("data-t-near") || "Near";
+  var tPinned = document.body.getAttribute("data-t-pinned") || "Pinned location";
   function placeLabel(p) {
     return [p.name, p.admin1, p.countryName].filter(Boolean).join(", ");
   }
@@ -69,6 +71,17 @@
     if (menu) menu.open = false;
   }
   markTheme(document.documentElement.getAttribute("data-theme") || "auto");
+
+  // ---------------------------------------------------------------- result sheets: fit the A5 page to small screens
+  function fitSheets() {
+    var box = document.querySelector(".sheets");
+    if (!box) return;
+    var sheetPx = 148 / 25.4 * 96;  // A5 width
+    var fit = Math.min(1, (box.clientWidth - 2) / sheetPx);
+    document.documentElement.style.setProperty("--fit", fit.toFixed(3));
+  }
+  fitSheets();
+  window.addEventListener("resize", fitSheets);
 
   var consent = document.getElementById("consent");
   if (consent && store("consent-ok") !== "1") consent.hidden = false;
@@ -160,8 +173,8 @@
       var input = field.querySelector('input[type="text"]');
       fetch("/v1/places/nearest?lat=" + ll.lat.toFixed(5) + "&lon=" + ll.lng.toFixed(5))
         .then(function (r) { return r.ok ? r.json() : {}; })
-        .then(function (d) { input.value = d.nearest ? "Near " + placeLabel(d.nearest) : "Pinned location"; })
-        .catch(function () { input.value = "Pinned location"; });
+        .then(function (d) { input.value = d.nearest ? tNear + " " + placeLabel(d.nearest) : tPinned; })
+        .catch(function () { input.value = tPinned; });
     }
     map.on("click", function (e) { pick(e.lngLat); });
     marker.on("dragend", function () { pick(marker.getLngLat()); });

@@ -8,8 +8,9 @@ from __future__ import annotations
 
 import re
 
-SITE_LANGS = ("en", "ta", "hi")
-LANG_LABEL = {"en": "English", "ta": "தமிழ்", "hi": "हिन्दी"}
+SITE_LANGS = ("en", "ta", "hi", "te", "ml", "kn")
+BASE_LANGS = ("en", "ta", "hi")      # the tuples in this file hold these three, in this order
+LANG_LABEL = {"en": "English", "ta": "தமிழ்", "hi": "हिन्दी", "te": "తెలుగు", "ml": "മലയാളം", "kn": "ಕನ್ನಡ"}
 LOCALIZED = re.compile(r"^/(?:$|horoscope$|match$|learn(?:/.*)?$|upcoming$|credits$|privacy$|terms$)")
 
 
@@ -221,9 +222,24 @@ _T: dict[str, tuple[str, str, str]] = {
 }
 
 
+def _extra(lang: str):
+    """Telugu, Malayalam and Kannada text lives in lang_te.py, lang_ml.py, lang_kn.py."""
+    from . import lang_kn, lang_ml, lang_te
+    return {"te": lang_te, "ml": lang_ml, "kn": lang_kn}.get(lang)
+
+
+def pick(row: tuple, lang: str, overlay: dict | None = None, key: str | None = None) -> str:
+    """Text for a language from an (en, ta, hi) row, or from the language module's overlay dict."""
+    if lang in BASE_LANGS:
+        return row[BASE_LANGS.index(lang)]
+    if overlay is not None and key in overlay:
+        return overlay[key]
+    return row[0]
+
+
 def T(lang: str, key: str, **kw) -> str:
-    row = _T[key]
-    text = row[SITE_LANGS.index(lang)] if lang in SITE_LANGS else row[0]
+    ex = _extra(lang)
+    text = pick(_T[key], lang, ex.UI if ex else None, key)
     return text.format(**kw) if kw else text
 
 
@@ -305,12 +321,12 @@ PAGE_META = {
     "upcoming": {
         "en": ("Coming Soon: Manglik Dosha, KP Matching and More | {site}",
                "Features in progress on {site}: Manglik (Chevvai) dosham, KP 7th cusp and Dasavidha Porutham "
-               "matching, forms in your language, templates and sharing."),
+               "matching, templates and sharing."),
         "ta": ("விரைவில்: செவ்வாய் தோஷம், KP பொருத்தம் மற்றும் பல | {site}",
-               "{site}-இல் வரவிருக்கும் வசதிகள்: செவ்வாய் தோஷம், KP 7-ஆம் பாவம், தசவித பொருத்தம், உங்கள் மொழியில் "
-               "படிவங்கள், வடிவமைப்புகள், பகிர்வு."),
+               "{site}-இல் வரவிருக்கும் வசதிகள்: செவ்வாய் தோஷம், KP 7-ஆம் பாவம், தசவித பொருத்தம், "
+               "வடிவமைப்புகள், பகிர்வு."),
         "hi": ("जल्द आ रहा है: मांगलिक दोष, KP मिलान और बहुत कुछ | {site}",
-               "{site} पर आने वाली सुविधाएँ: मांगलिक दोष, KP सप्तम भाव और दशविध पोरुथम मिलान, आपकी भाषा में फ़ॉर्म, "
+               "{site} पर आने वाली सुविधाएँ: मांगलिक दोष, KP सप्तम भाव और दशविध पोरुथम मिलान, "
                "टेम्पलेट और शेयरिंग।"),
     },
 }
@@ -430,7 +446,51 @@ CREDIT_USES = {
 }
 
 
+_VOCAB_NAME = {}  # filled below: id(table) → name used in the language modules' VOCAB dicts
+
+
 def V(table: dict, key: str, lang: str) -> str:
     """Translate a vocabulary value."""
     row = table.get(key)
-    return row[SITE_LANGS.index(lang)] if row and lang in SITE_LANGS else key
+    if not row:
+        return key
+    ex = _extra(lang)
+    return pick(row, lang, ex.VOCAB.get(_VOCAB_NAME.get(id(table)), {}) if ex else None, key)
+
+
+for _n in ("GANA", "NADI", "RAJJU", "YONI", "SEX", "ELEMENT", "QUALITY", "VARNA", "VASHYA", "GRADE", "GRADE_SHORT"):
+    _VOCAB_NAME[id(globals()[_n])] = _n
+
+
+def deity_symbol(lang: str, n: int, english: tuple[str, str]) -> tuple[str, str]:
+    if lang == "ta":
+        return DEITY_SYMBOL_TA[n]
+    if lang == "hi":
+        return DEITY_SYMBOL_HI[n]
+    ex = _extra(lang)
+    return ex.DEITY_SYMBOL[n] if ex else english
+
+
+def rasi_symbol(lang: str, r: int, english: str) -> str:
+    if lang == "ta":
+        return RASI_SYMBOL_TA[r]
+    if lang == "hi":
+        return RASI_SYMBOL_HI[r]
+    ex = _extra(lang)
+    return ex.RASI_SYMBOL[r] if ex else english
+
+
+def credit_use(lang: str, english: str) -> str:
+    if lang == "en":
+        return english
+    if lang in BASE_LANGS:
+        return CREDIT_USES.get(english, (english, english))[BASE_LANGS.index(lang) - 1]
+    ex = _extra(lang)
+    return ex.CREDIT_USES.get(english, english) if ex else english
+
+
+def page_meta(key: str, lang: str) -> tuple[str, str]:
+    if lang in PAGE_META[key]:
+        return PAGE_META[key][lang]
+    ex = _extra(lang)
+    return ex.META[key] if ex and key in ex.META else PAGE_META[key]["en"]

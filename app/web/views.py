@@ -5,6 +5,7 @@ description and SVGs we render ourselves.
 """
 from __future__ import annotations
 
+import contextvars
 import json
 from datetime import datetime
 from html import escape
@@ -12,12 +13,14 @@ from zoneinfo import ZoneInfo
 
 from ..core.reference import NAKSHATRAS, RASHIS
 from ..render import i18n
-from . import learn_hi, learn_ta
+from . import learn_hi, learn_kn, learn_ml, learn_ta, learn_te
 from .learn import ARTICLES, MODIFIED, PUBLISHED, Article
 from .forms import CHART_PARTS, BirthInput, HoroscopeForm, MatchForm
 from .settings import Settings
 from .strings import LANG_NAMES, LANGS, t
-from .ui import LANG_LABEL, PAGE_META, SITE_LANGS, CREDIT_USES, T, localize_links, lpath
+from .form_text import TIPS as FORM_TIPS, ft
+from .ui import LANG_LABEL, SITE_LANGS, T, credit_use, localize_links, lpath, page_meta, pick
+from . import ui as _ui
 
 FONTS_URL = ("https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;600;700"
              "&family=Noto+Sans+Tamil:wght@400;600;700&family=Noto+Sans+Telugu:wght@400;600;700"
@@ -42,7 +45,7 @@ def analytics_tags(measurement_id: str) -> str:
 
 
 TURNSTILE_JS = '<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>'
-STATIC_VERSION = "8"
+STATIC_VERSION = "10"
 
 
 def esc(v) -> str:
@@ -52,8 +55,9 @@ def esc(v) -> str:
 # ------------------------------------------------------------------ SEO
 DEFAULT_DESC = ("Free horoscope (jathagam) and marriage matching — Porutham and Ashtakoota (Guna Milan) — "
                 "in English, Tamil, Telugu, Malayalam, Kannada and Hindi.")
-OG_LOCALE = {"en": "en_IN", "ta": "ta_IN", "hi": "hi_IN"}
-ARTICLES_BY_LANG = {"en": ARTICLES, "ta": learn_ta.ARTICLES, "hi": learn_hi.ARTICLES}
+OG_LOCALE = {"en": "en_IN", "ta": "ta_IN", "hi": "hi_IN", "te": "te_IN", "ml": "ml_IN", "kn": "kn_IN"}
+ARTICLES_BY_LANG = {"en": ARTICLES, "ta": learn_ta.ARTICLES, "hi": learn_hi.ARTICLES, "te": learn_te.ARTICLES,
+                    "ml": learn_ml.ARTICLES, "kn": learn_kn.ARTICLES}
 
 
 def site_lang(lang: str | None) -> str:
@@ -61,7 +65,7 @@ def site_lang(lang: str | None) -> str:
 
 
 def meta(s: Settings, key: str, lang: str = "en") -> dict:
-    title, desc = PAGE_META[key][site_lang(lang)]
+    title, desc = page_meta(key, site_lang(lang))
     return {"page_title": title.format(site=s.site_name), "description": desc.format(site=s.site_name)}
 
 
@@ -95,11 +99,13 @@ THEME_BOOT = ('<script>try{var t=localStorage.getItem("theme");if(t==="light"||t
 # browser's first (main) language picks Tamil or Hindi. Any other browser language — including ones the site doesn't
 # have yet, such as Telugu — stays on English. Search-engine crawlers send English and keep no storage, so every
 # language version stays crawlable at its own address.
-LANG_BOOT = ('<script>(function(){try{var L=["en","ta","hi"],c=document.documentElement.lang,'
+_LANGS_JS = ",".join(f'"{c}"' for c in SITE_LANGS)
+_PREFIX_RE = "|".join(c for c in SITE_LANGS if c != "en")
+LANG_BOOT = ('<script>(function(){try{var L=[' + _LANGS_JS + '],c=document.documentElement.lang,'
              'p=localStorage.getItem("lang"),w=L.indexOf(p)>=0?p:"";'
              'if(!w&&c==="en"){var n=(navigator.languages&&navigator.languages[0])||navigator.language||"",'
              'b=String(n).toLowerCase().split("-")[0];if(L.indexOf(b)>=0)w=b}'
-             'if(w&&w!==c){var r=location.pathname.replace(/^\\/(ta|hi)(?=\\/|$)/,"")||"/";'
+             'if(w&&w!==c){var r=location.pathname.replace(/^\\/(' + _PREFIX_RE + ')(?=\\/|$)/,"")||"/";'
              'location.replace((w==="en"?r:"/"+w+(r==="/"?"":r))+location.search+location.hash)}}catch(e){}})()</script>')
 
 
@@ -238,7 +244,7 @@ def layout(s: Settings, title: str, body: str, *, active: str = "", map_page: bo
 <link rel="stylesheet" href="/static/site.css?v={STATIC_VERSION}">
 {''.join(head_extra)}
 </head>
-<body data-map-style="{esc(s.map_style_url)}">
+<body data-map-style="{esc(s.map_style_url)}" data-t-near="{esc(ft(lang, "Near"))}" data-t-pinned="{esc(ft(lang, "Pinned location"))}">
 <a class="skip" href="#main">{T(lang, "skip")}</a>
 <header class="site-head no-print"><a class="brand" href="/">{esc(s.site_name)}</a><nav>{nav}</nav>
 <div class="head-tools">{switch}{theme_menu(lang)}</div></header>
@@ -262,8 +268,16 @@ def layout(s: Settings, title: str, body: str, *, active: str = "", map_page: bo
 
 
 # ------------------------------------------------------------------ form widgets
+_FORM_LANG: contextvars.ContextVar[str] = contextvars.ContextVar("form_lang", default="en")
+
+
+def L(text: str) -> str:
+    """Form text in the language of the form being drawn."""
+    return ft(_FORM_LANG.get(), text)
+
+
 def _err(errors: dict, key: str) -> str:
-    return f'<p class="err" id="{esc(key)}-err">{esc(errors[key])}</p>' if key in errors else ""
+    return f'<p class="err" id="{esc(key)}-err">{esc(L(errors[key]))}</p>' if key in errors else ""
 
 
 def _aria(errors: dict, key: str) -> str:
@@ -273,8 +287,8 @@ def _aria(errors: dict, key: str) -> str:
 def text_field(key: str, label: str, value: str, errors: dict, *, type_: str = "text", required: bool = False,
                maxlength: int = 80, hint: str = "", extra: str = "") -> str:
     req = " required" if required else ""
-    h = f'<p class="hint">{esc(hint)}</p>' if hint else ""
-    return (f'<div class="field"><label for="{key}">{esc(label)}{" *" if required else ""}</label>'
+    h = f'<p class="hint">{esc(L(hint))}</p>' if hint else ""
+    return (f'<div class="field"><label for="{key}">{esc(L(label))}{" *" if required else ""}</label>'
             f'<input id="{key}" name="{key}" type="{type_}" value="{esc(value)}" maxlength="{maxlength}"'
             f'{req}{_aria(errors, key)}{extra}>{h}{_err(errors, key)}</div>')
 
@@ -303,19 +317,22 @@ TIPS = {
 def tip(key: str) -> str:
     """Info button with a small popover (hover, focus or tap). Text is ours, never user input."""
     title, text, href = TIPS[key]
+    lang = _FORM_LANG.get()
+    if lang in FORM_TIPS.get(key, {}):
+        title, text = FORM_TIPS[key][lang]
     tid = f"tip-{key.lower()}"
     return (f'<span class="tip"><button type="button" class="tip-btn" aria-expanded="false" aria-controls="{tid}" '
             f'aria-label="{esc(title)}" data-action="tip">i</button>'
             f'<span class="tip-box" id="{tid}" role="note"><b>{esc(title)}</b> {esc(text)} '
-            f'<a href="{href}" target="_blank" rel="noopener">Learn more</a></span></span>')
+            f'<a href="{href}" target="_blank" rel="noopener">{esc(L("Learn more"))}</a></span></span>')
 
 
 def select_field(key: str, label: str, value: str, options: list[tuple[str, str]], errors: dict,
                  required: bool = False, blank: str | None = None, info: str = "") -> str:
-    opts = f'<option value="">{esc(blank)}</option>' if blank is not None else ""
-    opts += "".join(f'<option value="{esc(v)}"{" selected" if v == value else ""}>{esc(lbl)}</option>'
+    opts = f'<option value="">{esc(L(blank))}</option>' if blank is not None else ""
+    opts += "".join(f'<option value="{esc(v)}"{" selected" if v == value else ""}>{esc(L(lbl))}</option>'
                     for v, lbl in options)
-    lab = f'<label for="{key}">{esc(label)}{" *" if required else ""}</label>'
+    lab = f'<label for="{key}">{esc(L(label))}{" *" if required else ""}</label>'
     if info:
         lab = f'<div class="label-row">{lab}{tip(info)}</div>'
     return (f'<div class="field">{lab}'
@@ -329,15 +346,15 @@ def place_field(prefix: str, b: BirthInput, errors: dict) -> str:
     lon = "" if b.lon is None else f"{b.lon:.5f}"
     coords = f"{lat}, {lon}" if lat else ""
     return f"""<div class="field place-field" data-prefix="{prefix}">
-<label for="{key}">Place of birth *</label>
+<label for="{key}">{esc(L("Place of birth"))} *</label>
 <div class="place-box">
 <input id="{key}" name="{key}" type="text" value="{esc(b.place)}" maxlength="120" autocomplete="off"
- placeholder="Start typing a town or city" role="combobox" aria-autocomplete="list" aria-expanded="false"
+ placeholder="{esc(L("Start typing a town or city"))}" role="combobox" aria-autocomplete="list" aria-expanded="false"
  aria-controls="{key}-list"{_aria(errors, key)}>
 <ul class="suggest" id="{key}-list" role="listbox" hidden></ul>
 </div>
 <input type="hidden" name="{prefix}lat" value="{lat}"><input type="hidden" name="{prefix}lon" value="{lon}">
-<p class="hint"><button type="button" class="linkish" data-action="map">Pick on map</button>
+<p class="hint"><button type="button" class="linkish" data-action="map">{esc(L("Pick on map"))}</button>
 <span class="coords">{esc(coords)}</span></p>
 <div class="map" hidden></div>
 {_err(errors, key)}
@@ -369,7 +386,7 @@ def common_options(lang: str, ayanamsa: str, errors: dict) -> str:
 def turnstile_widget(s: Settings) -> str:
     if s.turnstile_enabled:
         return f'<div class="cf-turnstile" data-sitekey="{esc(s.turnstile_site_key)}" data-size="flexible"></div>'
-    return '<p class="hint no-print">Bot check is off (local development).</p>'
+    return f'<p class="hint no-print">{esc(L("Bot check is off (local development)."))}</p>'
 
 
 def banner(message: str | None, candidates: list[dict] | None = None) -> str:
@@ -379,8 +396,8 @@ def banner(message: str | None, candidates: list[dict] | None = None) -> str:
     if candidates:
         items = "".join(f"<li>{esc(c.get('name'))}, {esc(c.get('admin1') or '')} {esc(c.get('countryName') or '')}</li>"
                         for c in candidates)
-        extra = f"<p>Pick one from the suggestions as you type, or use the map. Matches:</p><ul>{items}</ul>"
-    return f'<div class="banner" role="alert"><p>{esc(message)}</p>{extra}</div>'
+        extra = f"<p>{esc(L('Pick one from the suggestions as you type, or use the map. Matches:'))}</p><ul>{items}</ul>"
+    return f'<div class="banner" role="alert"><p>{esc(L(message))}</p>{extra}</div>'
 
 
 # ------------------------------------------------------------------ pages
@@ -415,18 +432,25 @@ def ui_field(lang: str) -> str:
 
 
 def form_note(lang: str) -> str:
-    note = T(lang, "form_note")
-    return f'<p class="hint form-note">{esc(note)}</p>' if note else ""
+    return ""  # forms are in the page language now
 
 
 def horoscope_form(s: Settings, frm: HoroscopeForm, message: str | None = None,
                    candidates: list[dict] | None = None, ui: str = "en") -> str:
     ui = site_lang(ui)
+    token = _FORM_LANG.set(ui)
+    try:
+        return _horoscope_form(s, frm, message, candidates, ui)
+    finally:
+        _FORM_LANG.reset(token)
+
+
+def _horoscope_form(s: Settings, frm: HoroscopeForm, message, candidates, ui: str) -> str:
     e = frm.errors
     b = frm.birth
     parts = "".join(
         f'<span class="check-wrap"><label class="check"><input type="checkbox" name="parts" value="{p}"'
-        f'{" checked" if p in frm.parts else ""}> {lbl}</label>{tip(p)}</span>'
+        f'{" checked" if p in frm.parts else ""}> {esc(L(lbl))}</label>{tip(p)}</span>'
         for p, lbl in zip(CHART_PARTS, ("Rasi chart", "Navamsa chart", "KP planet & cusp tables")))
     num = lambda k, lbl: text_field(k, lbl, "" if getattr(frm, k) is None else str(getattr(frm, k)), e,  # noqa: E731
                                     type_="number", maxlength=2, extra=' min="0" max="20" inputmode="numeric"')
@@ -434,15 +458,15 @@ def horoscope_form(s: Settings, frm: HoroscopeForm, message: str | None = None,
     body = f"""<h1>{esc(T(ui, "hform_h1"))}</h1>
 <p class="lead">{esc(T(ui, "hform_lead"))}</p>{form_note(ui)}
 {banner(message, candidates)}
-<form method="post" action="/horoscope" class="form" novalidate lang="en">{ui_field(ui)}
-<fieldset><legend>Birth details</legend>
+<form method="post" action="/horoscope" class="form" novalidate>{ui_field(ui)}
+<fieldset><legend>{L("Birth details")}</legend>
 {birth_fields("", b, e, with_sex=True)}
 </fieldset>
-<fieldset><legend>Chart options</legend>
+<fieldset><legend>{L("Chart options")}</legend>
 {common_options(frm.lang, frm.ayanamsa.value, e)}
-<div class="field"><span class="label">Include</span><div class="checks">{parts}</div>{_err(e, "parts")}</div>
+<div class="field"><span class="label">{L("Include")}</span><div class="checks">{parts}</div>{_err(e, "parts")}</div>
 </fieldset>
-<fieldset><legend>Family</legend>
+<fieldset><legend>{L("Family")}</legend>
 <div class="row2">
 {text_field("gothram", "Gothram (optional)", frm.gothram, e, maxlength=40)}
 {text_field("mathulam", "Mathulam — mother's family gothram (optional)", frm.mathulam, e, maxlength=40)}
@@ -457,7 +481,7 @@ def horoscope_form(s: Settings, frm: HoroscopeForm, message: str | None = None,
 </div>
 {_err(e, "brothers")}{_err(e, "sisters")}
 </fieldset>
-<fieldset><legend>Personal details</legend>
+<fieldset><legend>{L("Personal details")}</legend>
 <div class="row2">
 {text_field("degree", "Education — degree", frm.degree, e, maxlength=80)}
 {text_field("branch", "Education — branch / specialisation", frm.branch, e, maxlength=80)}
@@ -466,23 +490,23 @@ def horoscope_form(s: Settings, frm: HoroscopeForm, message: str | None = None,
 {text_field("occupation", "Work / occupation", frm.occupation, e, maxlength=120)}
 {text_field("complexion", "Complexion (optional)", frm.complexion, e, maxlength=40)}
 </div>
-<div class="field"><label id="desc-label">About (any language)</label>
+<div class="field"><label id="desc-label">{L("About (any language)")}</label>
 <div class="rte">
-<div class="rte-bar" role="toolbar" aria-label="Formatting">
-<button type="button" data-cmd="bold" title="Bold"><b>B</b></button>
-<button type="button" data-cmd="italic" title="Italic"><i>I</i></button>
-<button type="button" data-cmd="underline" title="Underline"><u>U</u></button>
-<button type="button" data-cmd="insertUnorderedList" title="Bulleted list">• List</button>
-<button type="button" data-cmd="insertOrderedList" title="Numbered list">1. List</button>
+<div class="rte-bar" role="toolbar" aria-label="{L("Formatting")}">
+<button type="button" data-cmd="bold" title="{L("Bold")}"><b>B</b></button>
+<button type="button" data-cmd="italic" title="{L("Italic")}"><i>I</i></button>
+<button type="button" data-cmd="underline" title="{L("Underline")}"><u>U</u></button>
+<button type="button" data-cmd="insertUnorderedList" title="{L("Bulleted list")}">• {L("List")}</button>
+<button type="button" data-cmd="insertOrderedList" title="{L("Numbered list")}">1. {L("List")}</button>
 </div>
 <div class="rte-area" contenteditable="true" role="textbox" aria-multiline="true" aria-labelledby="desc-label">{frm.description}</div>
 <textarea name="description" hidden>{esc(frm.description)}</textarea>
 </div>
-<p class="hint">Up to about 4,000 characters. Type in any language.</p>
+<p class="hint">{L("Up to about 4,000 characters. Type in any language.")}</p>
 </div>
 </fieldset>
 {turnstile_widget(s)}
-<p><button type="submit" class="primary">Generate horoscope</button></p>
+<p><button type="submit" class="primary">{L("Generate horoscope")}</button></p>
 </form>"""
     m = meta(s, "horoscope", ui)
     return layout(s, T(ui, "nav_horoscope"), body, active="horoscope", map_page=True, turnstile=True,
@@ -493,18 +517,26 @@ def horoscope_form(s: Settings, frm: HoroscopeForm, message: str | None = None,
 def match_form(s: Settings, frm: MatchForm, message: str | None = None,
                candidates: list[dict] | None = None, ui: str = "en") -> str:
     ui = site_lang(ui)
+    token = _FORM_LANG.set(ui)
+    try:
+        return _match_form(s, frm, message, candidates, ui)
+    finally:
+        _FORM_LANG.reset(token)
+
+
+def _match_form(s: Settings, frm: MatchForm, message, candidates, ui: str) -> str:
     e = frm.errors
     body = f"""<h1>{esc(T(ui, "mform_h1"))}</h1>
 <p class="lead">{T(ui, "mform_lead")}</p>{form_note(ui)}
 {banner(message, candidates)}
-<form method="post" action="/match" class="form" novalidate lang="en">{ui_field(ui)}
+<form method="post" action="/match" class="form" novalidate>{ui_field(ui)}
 <div class="pair-form">
-<fieldset class="bride"><legend>Bride</legend>{birth_fields("b_", frm.bride, e, with_sex=False)}</fieldset>
-<fieldset class="groom"><legend>Groom</legend>{birth_fields("g_", frm.groom, e, with_sex=False)}</fieldset>
+<fieldset class="bride"><legend>{L("Bride")}</legend>{birth_fields("b_", frm.bride, e, with_sex=False)}</fieldset>
+<fieldset class="groom"><legend>{L("Groom")}</legend>{birth_fields("g_", frm.groom, e, with_sex=False)}</fieldset>
 </div>
-<fieldset><legend>Options</legend>{common_options(frm.lang, frm.ayanamsa.value, e)}</fieldset>
+<fieldset><legend>{L("Options")}</legend>{common_options(frm.lang, frm.ayanamsa.value, e)}</fieldset>
 {turnstile_widget(s)}
-<p><button type="submit" class="primary">Check matching</button></p>
+<p><button type="submit" class="primary">{L("Check matching")}</button></p>
 </form>"""
     m = meta(s, "match", ui)
     return layout(s, T(ui, "nav_match"), body, active="match", map_page=True, turnstile=True, path="/match",
@@ -713,15 +745,15 @@ def credits(s: Settings, lang: str = "en") -> str:
     lang = site_lang(lang)
 
     def use(text: str) -> str:
-        return text if lang == "en" else CREDIT_USES.get(text, (text, text))[SITE_LANGS.index(lang) - 1]
+        return credit_use(lang, text)
     rows = "".join(f'<tr><th><a href="{esc(u)}" rel="noopener">{esc(n)}</a></th><td>{esc(lic)}</td><td>{esc(use(x))}</td></tr>'
                    for n, u, lic, x in CREDITS)
     src = (f'<p>{esc(T(lang, "agpl"))} <a href="{esc(s.source_url)}" rel="noopener">{esc(T(lang, "get_source"))}</a>.</p>'
            if s.source_url else f'<p>{esc(T(lang, "agpl"))}</p>')
     body = f"""<h1>{esc(T(lang, "credits_h1"))}</h1>{src}
 <p>{esc(T(lang, "thanks"))}</p>
-<table class="grid credits"><thead><tr><th>{esc(T(lang, "col_project"))}</th><th>{esc(T(lang, "col_licence"))}</th>
-<th>{esc(T(lang, "col_use"))}</th></tr></thead><tbody>{rows}</tbody></table>
+<div class="scroll"><table class="grid credits"><thead><tr><th>{esc(T(lang, "col_project"))}</th><th>{esc(T(lang, "col_licence"))}</th>
+<th>{esc(T(lang, "col_use"))}</th></tr></thead><tbody>{rows}</tbody></table></div>
 <p class="small">{T(lang, "rules_note", code="<code>app/rules/v1.py</code>")}</p>"""
     return layout(s, T(lang, "credits_h1"), body, active="credits", path="/credits", lang=lang,
                   **meta(s, "credits", lang))
@@ -797,8 +829,8 @@ _PRIVACY = {
 
 def privacy(s: Settings, lang: str = "en") -> str:
     lang = site_lang(lang)
-    i = SITE_LANGS.index(lang)
-    P = lambda k: _PRIVACY[k][i]  # noqa: E731  (our own text; contains markup)
+    ex = _ui._extra(lang)
+    P = lambda k: pick(_PRIVACY[k], lang, ex.PRIVACY if ex else None, k)  # noqa: E731  (our own text; has markup)
     contact = (" " + P("write").format(email=f'<a href="mailto:{esc(s.contact_email)}">{esc(s.contact_email)}</a>')
                if s.contact_email else "")
     # list only the services that are actually switched on
@@ -839,10 +871,11 @@ _TERMS = [
 
 def terms(s: Settings, lang: str = "en") -> str:
     lang = site_lang(lang)
-    i = SITE_LANGS.index(lang)
+    ex = _ui._extra(lang)
     src = (f' (<a href="{esc(s.source_url)}" rel="noopener">{esc(T(lang, "source_code"))}</a>)'
            if s.source_url else "")
-    items = "".join(f"<li>{row[i].format(src=src) if '{src}' in row[i] else row[i]}</li>" for row in _TERMS)
+    rows = [pick(row, lang) if not ex else ex.TERMS[n] for n, row in enumerate(_TERMS)]
+    items = "".join(f"<li>{r.format(src=src) if '{src}' in r else r}</li>" for r in rows)
     body = f'<h1>{esc(T(lang, "terms_h1"))}</h1><ul>{items}</ul>'
     return layout(s, T(lang, "terms_h1"), body, path="/terms", lang=lang, **meta(s, "terms", lang))
 
@@ -888,15 +921,6 @@ UPCOMING = [  # (status key, {lang: (title, description)})
                "பொருத்தங்கள்."),
         "hi": ("KP दशविध पोरुथम",
                "केवल चंद्र नक्षत्र नहीं, बल्कि नक्षत्र स्वामी और उप-स्वामी से KP पद्धति के दस मिलान।")}),
-    ("st_planned", {
-        "en": ("Forms in your language",
-               "Results already print in English, Tamil, Telugu, Malayalam, Kannada and Hindi; the forms themselves "
-               "will follow."),
-        "ta": ("உங்கள் மொழியில் படிவங்கள்",
-               "முடிவுகள் ஏற்கெனவே ஆங்கிலம், தமிழ், தெலுங்கு, மலையாளம், கன்னடம், இந்தியில் அச்சாகின்றன; படிவங்களும் "
-               "விரைவில்."),
-        "hi": ("आपकी भाषा में फ़ॉर्म",
-               "परिणाम पहले से अंग्रेज़ी, तमिल, तेलुगु, मलयालम, कन्नड़ और हिंदी में प्रिंट होते हैं; फ़ॉर्म भी जल्द।")}),
     ("st_review", {
         "en": ("Better Telugu, Malayalam and Kannada",
                "The labels in these languages are being reviewed by native speakers."),
@@ -941,8 +965,12 @@ UPCOMING = [  # (status key, {lang: (title, description)})
 
 def upcoming(s: Settings, lang: str = "en") -> str:
     lang = site_lang(lang)
-    items = "".join(f'<li class="card"><span class="tag">{esc(T(lang, st))}</span><h2>{esc(text[lang][0])}</h2>'
-                    f'<p>{esc(text[lang][1])}</p></li>' for st, text in UPCOMING)
+    ex = _ui._extra(lang)
+
+    def item(n: int, text: dict) -> tuple[str, str]:
+        return text[lang] if lang in text else (ex.UPCOMING[n] if ex else text["en"])
+    items = "".join(f'<li class="card"><span class="tag">{esc(T(lang, st))}</span><h2>{esc(item(n, text)[0])}</h2>'
+                    f'<p>{esc(item(n, text)[1])}</p></li>' for n, (st, text) in enumerate(UPCOMING))
     body = (f'<h1>{esc(T(lang, "up_h1"))}</h1><p class="lead">{esc(T(lang, "up_lead", site=s.site_name))}</p>'
             f'<ul class="cards roadmap">{items}</ul>')
     return layout(s, T(lang, "up_h1"), body, path="/upcoming", lang=lang, **meta(s, "upcoming", lang))

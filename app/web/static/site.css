@@ -154,7 +154,9 @@ button.linkish { border: 0; background: none; padding: 0; color: var(--accent); 
 .toolbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin: 4px 0 16px; }
 
 /* ---------------- printable sheets (A5 = 148 × 210 mm) ---------------- */
-.sheets { display: flex; flex-direction: column; align-items: center; gap: 20px; overflow-x: auto; }
+.sheets { display: flex; flex-direction: column; align-items: safe center; gap: 20px; overflow-x: auto; }
+/* On narrow screens the A5 sheets are scaled to the screen width (site.js sets --fit); printing is unaffected */
+@media screen { .sheet { zoom: var(--fit, 1); } }
 .sheet { width: 148mm; min-height: 210mm; padding: 8mm; background: #fff; color: #1f2933;
   box-shadow: 0 2px 12px rgba(0,0,0,.15); display: flex; flex-direction: column; font-size: 9pt; line-height: 1.35; }
 .sheet h2 { margin: 0; font-size: 14pt; }
@@ -223,7 +225,7 @@ button.linkish { border: 0; background: none; padding: 0; color: var(--accent); 
 .consent p { margin: 0; font-size: .9rem; }
 
 /* credits/prose */
-.credits td, .credits th { font-size: .9rem; }
+.credits td, .credits th { font-size: .9rem; overflow-wrap: anywhere; }
 main ul { padding-left: 1.2rem; }
 
 /* ---------------- print ---------------- */
@@ -234,7 +236,7 @@ main ul { padding-left: 1.2rem; }
   .no-print, .site-head, .site-foot, .consent, .toolbar, .skip, .ad { display: none !important; }
   .page { max-width: none; padding: 0; display: block; }
   .sheets { display: block; overflow: visible; }
-  .sheet { width: auto; min-height: calc(210mm - 16mm); padding: 0; box-shadow: none; break-after: page; }
+  .sheet { width: auto; min-height: calc(210mm - 16mm); padding: 0; box-shadow: none; break-after: page; zoom: 1 !important; }
   .sheet:last-child { break-after: auto; }
 }
 

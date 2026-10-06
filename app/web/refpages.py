@@ -9,8 +9,8 @@ from ..core.reference import NAKSHATRAS, RASHIS
 from ..render import i18n
 from . import stars as S
 from .settings import Settings
-from .ui import (DEITY_SYMBOL_HI, DEITY_SYMBOL_TA, ELEMENT, GANA, GRADE, GRADE_SHORT, NADI, QUALITY, RAJJU,
-                 RASI_SYMBOL_HI, RASI_SYMBOL_TA, SEX, SITE_LANGS, T, V, VARNA, VASHYA, YONI, lpath)
+from .ui import (ELEMENT, GANA, GRADE, GRADE_SHORT, LANG_LABEL, NADI, QUALITY, RAJJU, SEX, SITE_LANGS, T, V, VARNA,
+                 VASHYA, YONI, _extra, deity_symbol, lpath, pick, rasi_symbol)
 from .views import article_ld, breadcrumb_ld, esc, layout, site_lang
 
 GRADE_CLASS = {"UTTAMAM": "g-ut", "MADHYAMAM": "g-md", "ADHAMAM": "g-ad", "REJECTED": "g-rj"}
@@ -49,7 +49,7 @@ RT = {
         'जानने के लिए <a href="/learn/rajju-nadi">रज्जु और नाड़ी दोष</a> पढ़ें।'),
     "col_nak": ("Nakshatra", "நட்சத்திரம்", "नक्षत्र"),
     "col_rasi": ("Rasi", "ராசி", "राशि"),
-    "col_other": ("Other names", "பிற பெயர்கள்", "अन्य नाम"),
+    "col_other": ("Tamil / Hindi", "பிற பெயர்கள்", "अन्य नाम"),
     "col_lord": ("Lord", "அதிபதி", "स्वामी"),
     "col_gana": ("Gana", "கணம்", "गण"),
     "col_nadi": ("Nadi", "நாடி", "नाड़ी"),
@@ -75,7 +75,7 @@ RT = {
                  "{symbol}.",
                  "{name} 27 नक्षत्रों में {n}वाँ नक्षत्र है। इसका स्वामी {lord} है, अधिष्ठाता देवता {deity} हैं, और "
                  "इसका प्रतीक {symbol} है।"),
-    "f_other": ("Tamil / Hindi", "ஆங்கிலம் / இந்தி", "अंग्रेज़ी / तमिल"),
+    "f_other": ("Other languages", "பிற மொழிகளில்", "अन्य भाषाओं में"),
     "f_span": ("Span (sidereal)", "பாகை (நிராயனம்)", "विस्तार (निरयण)"),
     "f_lord": ("Ruling planet (dasha lord)", "அதிபதி (தசா நாதன்)", "स्वामी ग्रह (दशा स्वामी)"),
     "f_deity": ("Deity", "அதிதேவதை", "देवता"),
@@ -178,7 +178,7 @@ RT = {
                   "{name} {n}वीं राशि है, जो निरयण राशिचक्र में {a}° से {b}° तक फैली है। इसका स्वामी {lord} है, "
                   "प्रतीक {symbol} है, और यह {element} तत्व की {quality} राशि है।"),
     "f_western": ("Western name", "மேற்கத்தியப் பெயர்", "पश्चिमी नाम"),
-    "f_other_r": ("Tamil / Hindi", "ஆங்கிலம் / இந்தி", "अंग्रेज़ी / तमिल"),
+    "f_other_r": ("Other languages", "பிற மொழிகளில்", "अन्य भाषाओं में"),
     "f_el_q": ("Element / quality", "தத்துவம் / வகை", "तत्व / प्रकृति"),
     "f_strength": ("Exaltation / debilitation", "உச்சம் / நீசம்", "उच्च / नीच"),
     "exalted": ("{p} is exalted here", "{p} உச்சம்", "{p} उच्च"),
@@ -275,7 +275,8 @@ RT = {
 
 
 def R_(lang: str, key: str, **kw) -> str:
-    text = RT[key][SITE_LANGS.index(lang)]
+    ex = _extra(lang)
+    text = pick(RT[key], lang, ex.RT if ex else None, key)
     return text.format(**kw) if kw else text
 
 
@@ -326,25 +327,28 @@ def _pos(lang: str, x: float, end: bool = False) -> str:
 
 
 def _deity_symbol(lang: str, n: int) -> tuple[str, str]:
-    if lang == "ta":
-        return DEITY_SYMBOL_TA[n]
-    if lang == "hi":
-        return DEITY_SYMBOL_HI[n]
-    return S.NAK_DEITY_SYMBOL[n]
+    return deity_symbol(lang, n, S.NAK_DEITY_SYMBOL[n])
 
 
 def _rasi_symbol(lang: str, r: int) -> str:
-    return {"ta": RASI_SYMBOL_TA, "hi": RASI_SYMBOL_HI}.get(lang, S.RASI_SYMBOL)[r]
+    return rasi_symbol(lang, r, S.RASI_SYMBOL[r])
+
+
+def _name_in(code: str, kind: str, i: int) -> str:
+    return S.names(code, kind, i) if code != "en" else (NAKSHATRAS[i] if kind == "nakshatra" else RASHIS[i])
 
 
 def _other_names(lang: str, kind: str, i: int) -> str:
-    """The star's or rasi's names in the two other site languages."""
-    out = []
-    for code in SITE_LANGS:
-        if code != lang:
-            name = S.names(code, kind, i) if code != "en" else (NAKSHATRAS[i] if kind == "nakshatra" else RASHIS[i])
-            out.append(f'<span lang="{code}">{esc(name)}</span>')
-    return " / ".join(out)
+    """The star's or rasi's name in every other site language, labelled."""
+    return "<br>".join(f'{esc(LANG_LABEL[c])}: <span lang="{c}">{esc(_name_in(c, kind, i))}</span>'
+                       for c in SITE_LANGS if c != lang)
+
+
+def _index_other(lang: str, kind: str, i: int) -> str:
+    """Second-name column in the index tables: Tamil / Hindi on the English page, English elsewhere."""
+    if lang == "en":
+        return " / ".join(f'<span lang="{c}">{esc(_name_in(c, kind, i))}</span>' for c in ("ta", "hi"))
+    return esc(_name_in("en", kind, i))
 
 
 def _page(s: Settings, lang: str, path: str, title: str, page_title: str, description: str, body: str,
@@ -370,12 +374,13 @@ def nakshatra_index(s: Settings, lang: str = "en") -> str:
     for n in range(27):
         f = S.nak_facts(n)
         rasis = ", ".join(rasi_link(r, lang) for r, _ in f["rasis"])
-        rows.append(f'<tr><th>{n + 1}</th><td>{nak_link(n, lang)}</td><td>{_other_names(lang, "nakshatra", n)}</td>'
+        rows.append(f'<tr><th>{n + 1}</th><td>{nak_link(n, lang)}</td><td>{_index_other(lang, "nakshatra", n)}</td>'
                     f'<td>{esc(planet(lang, f["lord"]) if lang != "en" else f["lord"])}</td><td>{rasis}</td>'
                     f'<td>{esc(V(GANA, f["gana"], lang))}</td><td>{esc(V(NADI, f["nadi"], lang))}</td>'
                     f'<td>{esc(V(RAJJU, f["rajju"], lang))}</td></tr>')
     heads = "".join(f"<th>{esc(R_(lang, k))}</th>" for k in
-                    ("col_nak", "col_other", "col_lord", "col_rasi", "col_gana", "col_nadi", "col_rajju"))
+                    ("col_nak", "col_other" if lang == "en" else "col_english", "col_lord", "col_rasi", "col_gana",
+                     "col_nadi", "col_rajju"))
     body = f"""<h1>{esc(R_(lang, "naks_h1"))}</h1>
 <p class="lead">{esc(R_(lang, "naks_lead"))}</p>
 <p>{esc(R_(lang, "naks_p2"))}</p>
@@ -473,10 +478,11 @@ def rasi_index(s: Settings, lang: str = "en") -> str:
         naks = ", ".join(nak_link(n, lang) for n, _ in f["naks"])
         lord = f["lord"] if lang == "en" else planet(lang, f["lord"])
         rows.append(f'<tr><th>{r + 1}</th><td>{rasi_link(r, lang)}</td><td>{f["english"]}</td>'
-                    f'<td>{_other_names(lang, "rashi", r)}</td><td>{esc(lord)}</td>'
+                    + (f'<td>{_index_other(lang, "rashi", r)}</td>' if lang == "en" else "")
+                    + f'<td>{esc(lord)}</td>'
                     f'<td>{esc(V(ELEMENT, f["element"], lang))}</td><td>{naks}</td></tr>')
     heads = "".join(f"<th>{esc(R_(lang, k))}</th>" for k in
-                    ("col_rasi", "col_english", "col_other", "col_lord", "col_element", "col_naks"))
+                    ("col_rasi", "col_english") + (("col_other",) if lang == "en" else ()) + ("col_lord", "col_element", "col_naks"))
     body = f"""<h1>{esc(R_(lang, "rasis_h1"))}</h1>
 <p class="lead">{esc(R_(lang, "rasis_lead"))}</p>
 <div class="scroll"><table class="grid"><thead><tr><th>#</th>{heads}</tr></thead><tbody>{"".join(rows)}</tbody></table></div>
