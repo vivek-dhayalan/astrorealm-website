@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from .core.ayanamsa import Ayanamsa
+from .core import dasha as _dasha
 from .core.chart import Chart, build_chart
 from .core.ephemeris.base import PositionMode
 from .core.timeutil import InputError, parse_date, parse_time, to_utc
@@ -39,6 +40,11 @@ class ResolvedPerson:
         if model not in self._charts:
             self._charts[model] = build_chart(self.time.jd_ut, self.lat, self.lon, model, positions=self.positions)
         return self._charts[model]
+
+    def dasha(self, model: Ayanamsa, as_of=None) -> dict:
+        """Vimshottari dasha from the Moon in this chart; dates in the birth place's local time."""
+        offset = self.time.local - self.time.utc.replace(tzinfo=None)
+        return _dasha.compute(self.chart(model).moon.longitude, self.time.utc, offset, as_of)
 
     def summary(self, model: Ayanamsa) -> dict:
         c = self.chart(model).to_dict()
@@ -80,7 +86,7 @@ def run_match(req: MatchRequest) -> dict:
 
 def run_chart(req: ChartRequest) -> dict:
     p = ResolvedPerson(req.person, req.positions)
-    return p.summary(req.ayanamsa)
+    return {**p.summary(req.ayanamsa), "dasha": p.dasha(req.ayanamsa)}
 
 
 def search_places(q: str, limit: int = 5) -> list[dict]:

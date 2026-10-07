@@ -12,8 +12,8 @@ from .sanitize import clean_html
 from .strings import LANGS
 
 MAX_BODY = 64 * 1024
-CHART_PARTS = ("RASI", "NAVAMSA", "KP_TABLES", "DOSHAS")
-DEFAULT_PARTS = ("RASI", "NAVAMSA")
+CHART_PARTS = ("RASI", "NAVAMSA", "DASHA", "KP_TABLES", "DOSHAS")
+DEFAULT_PARTS = ("RASI", "NAVAMSA", "DASHA")
 
 
 def parse_body(body: bytes) -> dict[str, list[str]]:

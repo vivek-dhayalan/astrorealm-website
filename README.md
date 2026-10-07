@@ -180,7 +180,8 @@ POST /v1/match
   Each chart reports `positions` and `positionSensitive` — the planets whose lords would change under the
   other convention.
 
-Other endpoints: `POST /v1/chart` (single person), `GET /v1/places?q=Salem` (place candidates) and
+Other endpoints: `POST /v1/chart` (single person, including its Vimshottari `dasha`: balance at birth, current
+mahadasha/bhukti/antara with time left, and the mahadasha and current bhukti tables), `GET /v1/places?q=Salem` (place candidates) and
 `POST /v1/chart/image` — an SVG with the South Indian Rasi and Navamsa charts plus KP planet/cusp tables:
 
 ```json

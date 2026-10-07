@@ -491,3 +491,32 @@ def test_match_in_two_languages():
                               mang=m, rahu=r, svgs_by_lang=by_lang)
     assert html.count('class="sheet doshas"') == 2 and html.count('class="lang-block"') == 2
     assert "ವಿವಾಹ ಹೊಂದಾಣಿಕೆ" in html and "Marriage matching" in html
+
+
+@pytest.mark.parametrize("lang", ["en", "ta"])
+def test_dasha_on_horoscope_and_matching(lang):
+    from app.web.strings import t
+    frm = HoroscopeForm.parse(_hform(lang=[lang], parts=["RASI", "DASHA"]))
+    assert "DASHA" in frm.parts and "DASHA" in HoroscopeForm().parts  # on by default
+    rp = ResolvedPerson(frm.birth.to_person())
+    chart = rp.chart(frm.ayanamsa)
+    html = views.horoscope_result(Settings(), frm, "X", chart, {"RASI": svg.grid_svg(chart, lang, "RASI")},
+                                  dasha=rp.dasha(frm.ayanamsa))
+    sheet = html[html.index('class="sheet dasha-sheet"'):]
+    assert t(lang, "dasha_balance") in sheet and t(lang, "md_table") in sheet
+    assert sheet.count('class="now"') == 4  # current mahadasha, bhukti, antara and sookshma rows
+    assert 'dasha-table timed' in sheet and t(lang, "sookshma") in sheet
+    page = _match_html(lang)
+    assert 'pair-dasha' not in page  # only when dashas are passed
+    f = {"b_name": ["A"], "b_dob": ["1996-07-14"], "b_tob": ["06:20"], "b_lat": ["11.00555"], "b_lon": ["76.96612"],
+         "g_name": ["B"], "g_dob": ["1993-11-02"], "g_tob": ["21:05"], "g_lat": ["11.93381"], "g_lon": ["79.82979"],
+         "lang": [lang], "ayanamsa": ["KP"]}
+    m = MatchForm.parse(f)
+    people = {"bride": ResolvedPerson(m.bride.to_person()), "groom": ResolvedPerson(m.groom.to_person())}
+    charts = {r: p.chart(m.ayanamsa) for r, p in people.items()}
+    svgs = {r: svg.grid_svg(c, lang, "RASI") for r, c in charts.items()}
+    a, p = ashtakoota.match(charts["groom"], charts["bride"]), porutham.match(charts["groom"], charts["bride"])
+    html = views.match_result(Settings(), m, {"bride": "x", "groom": "y"}, charts, svgs, a, p,
+                              dashas={r: pp.dasha(m.ayanamsa) for r, pp in people.items()})
+    sheet = html[html.index('pair-dasha'):]
+    assert sheet.index(t(lang, "bride")) < sheet.index(t(lang, "groom")) and sheet.count('class="now"') == 4

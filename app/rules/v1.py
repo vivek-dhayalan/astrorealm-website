@@ -184,6 +184,11 @@ SPECIAL_ASPECTS = {"Mars": {4, 8}, "Jupiter": {5, 9}, "Saturn": {3, 10}}
 MALEFICS = ("Mars", "Saturn")
 BENEFICS = ("Jupiter", "Venus")
 
+# ------------------------------------------------------------ Vimshottari dasha
+# Length of a dasha "year" in days. 365.25 (Julian year) is the common software default; some use 365.2422
+# (tropical) or 360 (savana). VERIFY against the astrologer's AstroWonder dasha printout.
+DASHA_YEAR_DAYS = 365.25
+
 # ------------------------------------------------------------ Rahu / Ketu (advisory, never a veto)
 NODE_7TH_WEIGHT = {"lagna": 2, "moon": 1}   # node in the 7th from Lagna counts more than from the Moon
 NODE_STRONG_AT = 3                          # weight ≥ this → STRONG, else MILD (never below MILD)

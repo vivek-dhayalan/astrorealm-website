@@ -167,6 +167,7 @@ async def horoscope_submit(request: Request):
             if kc is not None:
                 svgs["KP_TABLES"] = svg.kp_svg(kc, kp.planet_significations(kc), lg, compact=True)
             by_lang[lg] = svgs
+        dasha = rp.dasha(frm.ayanamsa) if "DASHA" in frm.parts else None
         doshas = None
         if "DOSHAS" in frm.parts:
             doshas = {"manglik": {t.lower(): manglik.assess(chart, t) for t in TRADITIONS},
@@ -176,7 +177,7 @@ async def horoscope_submit(request: Request):
         frm.errors["place" if "PLACE" in exc.code else "dob"] = msg
         return html(views.horoscope_form(s, frm, msg, cands, ui=ui), 422, private=True)
     return html(views.horoscope_result(s, frm, _place_label(frm.birth, rp), chart, by_lang[frm.lang], ui=ui,
-                                       doshas=doshas, svgs_by_lang=by_lang), private=True)
+                                       doshas=doshas, svgs_by_lang=by_lang, dasha=dasha), private=True)
 
 
 @router.post("/match", response_class=HTMLResponse)
@@ -210,8 +211,9 @@ async def match_submit(request: Request):
     poru = porutham.match(charts["groom"], charts["bride"])
     mang = manglik.match(charts["groom"], charts["bride"])
     rahu = nodes.match(charts["groom"], charts["bride"])
+    dashas = {r: p.dasha(frm.ayanamsa) for r, p in people.items()}
     return html(views.match_result(s, frm, labels, charts, svgs, ashta, poru, ui=ui, mang=mang, rahu=rahu,
-                                   svgs_by_lang=by_lang), private=True)
+                                   svgs_by_lang=by_lang, dashas=dashas), private=True)
 
 
 def site_paths() -> list[str]:

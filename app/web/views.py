@@ -46,7 +46,7 @@ def analytics_tags(measurement_id: str) -> str:
 
 
 TURNSTILE_JS = '<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>'
-STATIC_VERSION = "15"
+STATIC_VERSION = "17"
 
 
 def esc(v) -> str:
@@ -312,6 +312,10 @@ TIPS = {
                   "Krishnamurti Paddhati tables: for every planet and house cusp, the sign lord, star (nakshatra) "
                   "lord, sub lord and finer sub-sub levels, plus the houses each one signifies. Always calculated "
                   "with the KP ayanamsa. Prints as a separate page.", "/learn/kp-astrology"),
+    "DASHA": ("What are the dasha periods?",
+              "Vimshottari dasha: the planetary periods that run from birth, set by the Moon's nakshatra. Shows the "
+              "current mahadasha, bhukti and antara with the time left in each, the balance at birth, and the dates "
+              "when each period changes. Prints as a separate page.", ""),
     "DOSHAS": ("What are the dosha details?",
                "Chevvai (Manglik) dosham under both the South and North Indian rules, and Rahu or Ketu in the 7th "
                "house — each with what raises, lowers or cancels it. A dosha is one input, not a verdict. Prints as a "
@@ -462,8 +466,8 @@ def _horoscope_form(s: Settings, frm: HoroscopeForm, message, candidates, ui: st
     parts = "".join(
         f'<span class="check-wrap"><label class="check"><input type="checkbox" name="parts" value="{p}"'
         f'{" checked" if p in frm.parts else ""}> {esc(L(lbl))}</label>{tip(p)}</span>'
-        for p, lbl in zip(CHART_PARTS, ("Rasi chart", "Navamsa chart", "KP planet & cusp tables",
-                                         "Dosha details (Chevvai / Manglik, Rahu–Ketu)")))
+        for p, lbl in zip(CHART_PARTS, ("Rasi chart", "Navamsa chart", "Dasha periods (Vimshottari)",
+                                         "KP planet & cusp tables", "Dosha details (Chevvai / Manglik, Rahu–Ketu)")))
     num = lambda k, lbl: text_field(k, lbl, "" if getattr(frm, k) is None else str(getattr(frm, k)), e,  # noqa: E731
                                     type_="number", maxlength=2, extra=' min="0" max="20" inputmode="numeric"')
     living = [("living", "Living"), ("deceased", "Deceased")]
@@ -563,6 +567,12 @@ def _fmt_date(d: str) -> str:
     return f"{dd}-{m}-{y}"
 
 
+def _fmt_stamp(iso: str) -> str:
+    """'2026-10-02T00:19:55' → '02-10-2026 00:19'."""
+    d, _, tm = iso.partition("T")
+    return f"{_fmt_date(d)} {tm[:5]}" if tm else _fmt_date(d)
+
+
 def _fmt_time(tob: str) -> str:
     hh, mm = (int(x) for x in tob.split(":")[:2])
     ampm = "AM" if hh < 12 else "PM"
@@ -607,10 +617,11 @@ def toolbar(back: str, ui: str = "en") -> str:
 
 
 def horoscope_result(s: Settings, frm: HoroscopeForm, place_label: str, chart, svgs: dict[str, str],
-                     ui: str = "en", doshas: dict | None = None, svgs_by_lang: dict[str, dict] | None = None) -> str:
+                     ui: str = "en", doshas: dict | None = None, svgs_by_lang: dict[str, dict] | None = None,
+                     dasha: dict | None = None) -> str:
     """svgs: charts in frm.lang; svgs_by_lang: charts for every output language (first + optional second)."""
     by_lang = svgs_by_lang or {frm.lang: svgs}
-    blocks = "".join(f'<div class="lang-block" lang="{lg}">{_horoscope_sheets(s, frm, place_label, chart, by_lang[lg], lg, doshas)}</div>'
+    blocks = "".join(f'<div class="lang-block" lang="{lg}">{_horoscope_sheets(s, frm, place_label, chart, by_lang[lg], lg, doshas, dasha)}</div>'
                      for lg in frm.langs if lg in by_lang)
     pt = print_title(s, [frm.birth.name], t(frm.lang, "horoscope"))
     body = toolbar("/horoscope", ui) + f'<div class="sheets" lang="{frm.lang}" data-print-title="{esc(pt)}">{blocks}</div>'
@@ -619,7 +630,7 @@ def horoscope_result(s: Settings, frm: HoroscopeForm, place_label: str, chart, s
 
 
 def _horoscope_sheets(s: Settings, frm: HoroscopeForm, place_label: str, chart, svgs: dict[str, str], lang: str,
-                      doshas: dict | None) -> str:
+                      doshas: dict | None, dasha: dict | None = None) -> str:
     b = frm.birth
 
     def sib(n, m):
@@ -662,6 +673,8 @@ def _horoscope_sheets(s: Settings, frm: HoroscopeForm, place_label: str, chart, 
 <div class="cols"><div>{sec("birth_details", birth)}</div><div>{right}</div></div>
 {about}{grids_html}
 {foot}</section>"""]
+    if dasha:
+        sheets.append(_dasha_sheet_single(lang, b.name, dasha, foot))
     if doshas:
         cols = [(b.name or t(lang, "horoscope"), doshas["manglik"], doshas["rahuKetu"])]
         sheets.append(f'<section class="sheet doshas single-dosha"><header class="sheet-head small"><h2>{esc(b.name)}</h2>'
@@ -670,6 +683,81 @@ def _horoscope_sheets(s: Settings, frm: HoroscopeForm, place_label: str, chart, 
         sheets.append(f'<section class="sheet kp-sheet"><header class="sheet-head small"><h2>{esc(b.name)}</h2>'
                       f'<p>KP</p></header><figure class="kp">{svgs["KP_TABLES"]}</figure>{foot}</section>')
     return "".join(sheets)
+
+
+# ------------------------------------------------------------------ Vimshottari dasha
+def _dasha_table(lang: str, periods: list[dict], now: dict | None, timed: bool = False) -> str:
+    """Lord / from / to (and days, with times, for short periods); the running period highlighted."""
+    planet = i18n.get(lang)["planet"]
+    key, end, fmt = ("startAt", "endAt", _fmt_stamp) if timed else ("start", "end", _fmt_date)
+    head = (f'<tr><th>{esc(t(lang, "col_lord"))}</th><th>{esc(t(lang, "col_from"))}</th><th>{esc(t(lang, "col_to"))}</th>'
+            + (f'<th class="num">{esc(t(lang, "col_days"))}</th>' if timed else "") + "</tr>")
+    rows = []
+    for p in periods:
+        cls = ' class="now"' if now and p[key] == now[key] else ""
+        days = f'<td class="num">{p["days"]:.1f}</td>' if timed else ""
+        rows.append(f'<tr{cls}><td>{esc(planet.get(p["lord"], p["lord"]))}</td><td>{fmt(p[key])}</td>'
+                    f'<td>{fmt(p[end])}</td>{days}</tr>')
+    return (f'<table class="grid dasha-table{" timed" if timed else ""}"><thead>{head}</thead>'
+            f'<tbody>{"".join(rows)}</tbody></table>')
+
+
+def _dasha_blocks(lang: str, d: dict, deep: bool = False) -> tuple[str, list[str]]:
+    """(summary, [titled tables]) for one person; deep adds the antara and sookshma tables."""
+    planet = lambda name: i18n.get(lang)["planet"].get(name, name)  # noqa: E731
+    span = lambda v: t(lang, "ymd", y=v[0], m=v[1], d=v[2])  # noqa: E731
+    bal = d["birthBalance"]
+    rows = [(esc(t(lang, "dasha_balance")), esc(t(lang, "dasha_of", lord=planet(bal["lord"]), span=span(bal["ymd"]))))]
+    cur = d.get("current")
+    tables = []
+    if cur:
+        rows.append((f'<b>{esc(t(lang, "dasha_current"))}</b>',
+                     f'<b>{esc(" / ".join(planet(cur[k]["lord"]) for k in ("mahadasha", "bhukti", "antara")))}</b>'
+                     f' <span class="note">({esc(t(lang, "as_on", date=_fmt_date(d["asOf"])))})</span>'))
+        for k in ("mahadasha", "bhukti", "antara"):
+            p = cur[k]
+            rows.append((esc(t(lang, k)), f'{esc(planet(p["lord"]))} · '
+                         f'{esc(t(lang, "remaining", span=span(p["remaining"]), date=_fmt_date(p["end"])))}'))
+        if "sookshma" in cur:
+            p = cur["sookshma"]
+            rows.append((esc(t(lang, "sookshma")), f'{esc(planet(p["lord"]))} · '
+                         f'{esc(t(lang, "days_left", n=p["daysLeft"], date=_fmt_stamp(p["endAt"])))}'))
+    # the first mahadasha is listed from birth, so match the running one by lord when it is the first
+    md_now = None
+    if cur:
+        md_now = next((m for m in d["mahadashas"] if m["lord"] == cur["mahadasha"]["lord"]
+                       and m["end"] == cur["mahadasha"]["end"]), None)
+    tables.append(f'<h4>{esc(t(lang, "md_table"))}</h4>{_dasha_table(lang, d["mahadashas"], md_now)}')
+    if cur and d.get("bhuktis"):
+        tables.append(f'<h4>{esc(t(lang, "bh_table", lord=planet(cur["mahadasha"]["lord"])))}</h4>'
+                      f'{_dasha_table(lang, d["bhuktis"], cur["bhukti"])}')
+    if deep and cur and d.get("antaras"):
+        tables.append(f'<h4>{esc(t(lang, "an_table", lord=planet(cur["bhukti"]["lord"])))}</h4>'
+                      f'{_dasha_table(lang, d["antaras"], cur["antara"])}')
+    if deep and cur and d.get("sookshmas"):
+        tables.append(f'<h4>{esc(t(lang, "sk_table", lord=planet(cur["antara"]["lord"])))}</h4>'
+                      f'{_dasha_table(lang, d["sookshmas"], cur["sookshma"], timed=True)}')
+    return _kv(rows), tables
+
+
+def _dasha_sheet_single(lang: str, name: str, d: dict, foot: str) -> str:
+    summary, tables = _dasha_blocks(lang, d, deep=True)
+    return (f'<section class="sheet dasha-sheet"><header class="sheet-head small"><h2>{esc(name)}</h2>'
+            f'<p>{esc(t(lang, "dasha_title"))}</p></header>'
+            f'<section class="block"><h3>{esc(t(lang, "dasha_title"))}</h3>{summary}</section>'
+            f'<div class="cols">{"".join(f"<div>{x}</div>" for x in tables)}</div>'
+            f'<p class="small dosha-note">{esc(t(lang, "dasha_note"))}</p>{foot}</section>')
+
+
+def _dasha_sheet_pair(lang: str, title: str, people: list[tuple[str, str, dict]], foot: str) -> str:
+    """people: (role, name, dasha) — bride first."""
+    cols = []
+    for role, name, d in people:
+        summary, tables = _dasha_blocks(lang, d)
+        cols.append(f'<div><p class="role">{esc(t(lang, role))}</p><h3>{esc(name)}</h3>{summary}{"".join(tables)}</div>')
+    return (f'<section class="sheet dasha-sheet pair-dasha"><header class="sheet-head small"><h2>'
+            f'{esc(t(lang, "dasha_title"))} · {esc(title)}</h2></header><div class="cols">{"".join(cols)}</div>'
+            f'<p class="small dosha-note">{esc(t(lang, "dasha_note"))}</p>{foot}</section>')
 
 
 _FILENAME_BAD = re.compile(r'[\\/:*?"<>|\x00-\x1f]+')
@@ -796,11 +884,11 @@ def _dosha_sheet(lang: str, mang: dict, rahu: dict) -> str:
 
 def match_result(s: Settings, frm: MatchForm, labels: dict[str, str], charts: dict, svgs: dict[str, str],
                  ashta: dict, poru: dict, ui: str = "en", mang: dict | None = None, rahu: dict | None = None,
-                 svgs_by_lang: dict[str, dict] | None = None) -> str:
+                 svgs_by_lang: dict[str, dict] | None = None, dashas: dict | None = None) -> str:
     """svgs: bride/groom charts in frm.lang; svgs_by_lang: the same for every output language."""
     by_lang = svgs_by_lang or {frm.lang: svgs}
     blocks = "".join(f'<div class="lang-block" lang="{lg}">'
-                     f'{_match_sheets(s, frm, labels, charts, by_lang[lg], ashta, poru, lg, mang, rahu)}</div>'
+                     f'{_match_sheets(s, frm, labels, charts, by_lang[lg], ashta, poru, lg, mang, rahu, dashas)}</div>'
                      for lg in frm.langs if lg in by_lang)
     pt = print_title(s, [frm.bride.name, frm.groom.name], t(frm.lang, "matching"))
     body = toolbar("/match", ui) + f'<div class="sheets" lang="{frm.lang}" data-print-title="{esc(pt)}">{blocks}</div>'
@@ -808,7 +896,8 @@ def match_result(s: Settings, frm: MatchForm, labels: dict[str, str], charts: di
 
 
 def _match_sheets(s: Settings, frm: MatchForm, labels: dict[str, str], charts: dict, svgs: dict[str, str],
-                  ashta: dict, poru: dict, lang: str, mang: dict | None, rahu: dict | None) -> str:
+                  ashta: dict, poru: dict, lang: str, mang: dict | None, rahu: dict | None,
+                  dashas: dict | None = None) -> str:
     en = lang == "en"
     # bride first (left), groom second (right) — always
     pair = _pair_grid(lang, frm, labels, charts, svgs)
@@ -857,6 +946,9 @@ def _match_sheets(s: Settings, frm: MatchForm, labels: dict[str, str], charts: d
     if mang and rahu:
         sheets += (f'<section class="sheet doshas"><header class="sheet-head small"><h2>{esc(t(lang, "doshas"))} · '
                    f'{esc(title)}</h2></header>{_dosha_sheet(lang, mang, rahu)}{foot}</section>')
+    if dashas:
+        sheets += _dasha_sheet_pair(lang, title, [("bride", frm.bride.name, dashas["bride"]),
+                                                  ("groom", frm.groom.name, dashas["groom"])], foot)
     return sheets
 
 
