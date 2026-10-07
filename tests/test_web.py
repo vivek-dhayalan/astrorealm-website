@@ -50,8 +50,10 @@ def test_horoscope_form_validation():
     assert set(e) >= {"name", "dob", "tob", "parts", "brothers", "place"}
     frm = HoroscopeForm.parse(_hform(lang=["xx"], ayanamsa=["nope"], father=["maybe"]))
     assert frm.lang == "en" and frm.ayanamsa.value == "LAHIRI" and frm.father == ""
-    frm = HoroscopeForm.parse(_hform(gothram=["Bharadwaja"], mathulam=["Kashyapa" * 10]))
+    frm = HoroscopeForm.parse(_hform(gothram=["Bharadwaja"], mathulam=["Kashyapa" * 10], caste=["Iyer <b>x</b>"]))
     assert not frm.errors and frm.gothram == "Bharadwaja" and len(frm.mathulam) == 40
+    assert frm.caste == "Iyer <b>x</b>"  # plain text; escaped when shown
+    assert HoroscopeForm.parse(_hform(caste=["x" * 100])).caste == "x" * 60
 
 
 def test_parse_body_limits():
@@ -354,7 +356,7 @@ def test_star_table_agrees_with_the_matcher():
 
 def test_form_language_preselect():
     page = views.horoscope_form(Settings(), HoroscopeForm(lang="ta"), ui="ta")
-    assert 'value="ta" selected' in page and 'name="ui" value="ta"' in page
+    assert 'name="lang" value="ta" checked' in page and 'name="ui" value="ta"' in page
     assert "உங்கள் ஜாதகம் கணிக்க" in page and "<legend>Birth details</legend>" not in page  # the form is Tamil too
 
 
@@ -448,3 +450,44 @@ def test_print_title_names_the_pdf_without_touching_the_tab_title():
     assert 'data-print-title="Bride script &amp; Groom - Marriage matching - AstroRealm"' in html  # <> dropped
     assert "<title>" in html and "Bride" not in html[html.index("<title>"):html.index("</title>")]
     assert views.print_title(Settings(), ['A/B:"C"', ""], "Horoscope") == "A B C - Horoscope - AstroRealm"
+
+
+def test_second_output_language():
+    assert HoroscopeForm.parse(_hform(lang=["ta", "en"])).langs == ["ta", "en"]
+    assert HoroscopeForm.parse(_hform(lang=["ta", "ta"])).langs == ["ta"]  # duplicates collapse
+    assert HoroscopeForm.parse(_hform(lang=["ta", "xx"])).langs == ["ta"]
+    frm = HoroscopeForm.parse(_hform(lang=["ta", "hi"], parts=["RASI", "DOSHAS"]))
+    chart = ResolvedPerson(frm.birth.to_person()).chart(frm.ayanamsa)
+    by_lang = {lg: {"RASI": svg.grid_svg(chart, lg, "RASI", degrees=False)} for lg in frm.langs}
+    from app.matching import manglik as M, nodes as N
+    d = {"manglik": {k.lower(): M.assess(chart, k) for k in M.TRADITIONS}, "rahuKetu": N.assess(chart)}
+    html = views.horoscope_result(Settings(), frm, "X", chart, by_lang["ta"], doshas=d, svgs_by_lang=by_lang)
+    ta, hi = html.index('class="lang-block" lang="ta"'), html.index('class="lang-block" lang="hi"')
+    assert ta < hi and html.count('class="sheet ') + html.count('class="sheet"') == 4  # 2 pages × 2 languages
+    assert "ஜாதகம்" in html[ta:hi] and "जन्म कुंडली" in html[hi:]
+    form = views.horoscope_form(Settings(), HoroscopeForm(lang="ta", lang2="en"), ui="en")
+    assert form.count('name="lang" value="ta" checked') == 1 and form.count('name="lang" value="en" checked') == 1
+    assert 'data-max="2"' in form and form.count('type="checkbox" name="lang"') == 6
+    # ticking order doesn't matter; English goes after the Indian language; more than two is an error
+    assert HoroscopeForm.parse(_hform(lang=["en", "ta"])).langs == ["ta", "en"]
+    many = HoroscopeForm.parse(_hform(lang=["en", "ta", "hi"]))
+    assert many.errors["lang"] == "Select at most two languages."
+    assert HoroscopeForm.parse(_hform(lang=[])).errors["lang"] == "Choose an output language."
+    assert MatchForm.parse({"lang": ["kn", "en", "hi"]}).errors["lang"]
+
+
+def test_match_in_two_languages():
+    f = {"b_name": ["A"], "b_dob": ["1996-07-14"], "b_tob": ["06:20"], "b_lat": ["11.00555"], "b_lon": ["76.96612"],
+         "g_name": ["B"], "g_dob": ["1993-11-02"], "g_tob": ["21:05"], "g_lat": ["11.93381"], "g_lon": ["79.82979"],
+         "lang": ["en", "kn"], "ayanamsa": ["KP"]}
+    frm = MatchForm.parse(f)
+    assert frm.langs == ["kn", "en"]
+    people = {"bride": ResolvedPerson(frm.bride.to_person()), "groom": ResolvedPerson(frm.groom.to_person())}
+    charts = {r: p.chart(frm.ayanamsa) for r, p in people.items()}
+    by_lang = {lg: {r: svg.grid_svg(c, lg, "RASI", degrees=False) for r, c in charts.items()} for lg in frm.langs}
+    a, p = ashtakoota.match(charts["groom"], charts["bride"]), porutham.match(charts["groom"], charts["bride"])
+    m, r = manglik.match(charts["groom"], charts["bride"]), nodes.match(charts["groom"], charts["bride"])
+    html = views.match_result(Settings(), frm, {"bride": "x", "groom": "y"}, charts, by_lang["en"], a, p,
+                              mang=m, rahu=r, svgs_by_lang=by_lang)
+    assert html.count('class="sheet doshas"') == 2 and html.count('class="lang-block"') == 2
+    assert "ವಿವಾಹ ಹೊಂದಾಣಿಕೆ" in html and "Marriage matching" in html

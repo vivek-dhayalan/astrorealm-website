@@ -100,9 +100,28 @@ def _birth(f: dict, prefix: str = "", sex: str | None = None) -> BirthInput:
     )
 
 
-def _lang(f: dict) -> str:
-    v = _one(f, "lang", 2)
-    return v if v in LANGS else "en"
+MAX_LANGS = 2
+
+
+def _langs(f: dict) -> list[str]:
+    """Output languages ticked on the form (checkboxes named "lang"), at most MAX_LANGS used.
+
+    Order: as listed, except that English goes after an Indian language — "Tamil + English" prints Tamil first.
+    """
+    picked = [v for v in LANGS if v in {x.strip() for x in (f.get("lang") or []) + (f.get("lang2") or [])}]
+    if "en" in picked and len(picked) > 1:
+        picked = [v for v in picked if v != "en"] + ["en"]
+    return picked
+
+
+def _lang_fields(f: dict, errors: dict) -> dict:
+    picked = _langs(f)
+    if not picked:
+        errors["lang"] = "Choose an output language."
+    elif len(picked) > MAX_LANGS:
+        errors["lang"] = "Select at most two languages."
+    picked = picked or ["en"]
+    return {"lang": picked[0], "lang2": picked[1] if len(picked) > 1 else ""}
 
 
 def _ayanamsa(f: dict) -> Ayanamsa:
@@ -114,8 +133,10 @@ def _ayanamsa(f: dict) -> Ayanamsa:
 class HoroscopeForm:
     birth: BirthInput = field(default_factory=BirthInput)
     lang: str = "en"
+    lang2: str = ""
     ayanamsa: Ayanamsa = Ayanamsa.LAHIRI
     parts: tuple[str, ...] = DEFAULT_PARTS
+    caste: str = ""
     gothram: str = ""
     mathulam: str = ""
     father: str = ""
@@ -131,14 +152,20 @@ class HoroscopeForm:
     description: str = ""
     errors: dict[str, str] = field(default_factory=dict)
 
+    @property
+    def langs(self) -> list[str]:
+        return [self.lang] + ([self.lang2] if self.lang2 else [])
+
     @classmethod
     def parse(cls, f: dict) -> "HoroscopeForm":
         parts = tuple(p for p in CHART_PARTS if p in (f.get("parts") or []))
+        lang_errors: dict[str, str] = {}
         frm = cls(
             birth=_birth(f),
-            lang=_lang(f),
+            **_lang_fields(f, lang_errors),
             ayanamsa=_ayanamsa(f),
             parts=parts,
+            caste=_one(f, "caste", 60),
             gothram=_one(f, "gothram", 40),
             mathulam=_one(f, "mathulam", 40),
             father=_one(f, "father", 10) if _one(f, "father", 10) in ("living", "deceased") else "",
@@ -153,6 +180,7 @@ class HoroscopeForm:
             occupation=_one(f, "occupation", 120),
             description=clean_html((f.get("description") or [""])[0]),
         )
+        frm.errors.update(lang_errors)
         frm.birth.validate("", frm.errors)
         if not frm.parts:
             frm.errors["parts"] = "Choose at least one chart."
@@ -168,12 +196,20 @@ class MatchForm:
     bride: BirthInput = field(default_factory=lambda: BirthInput(sex="F"))
     groom: BirthInput = field(default_factory=lambda: BirthInput(sex="M"))
     lang: str = "en"
+    lang2: str = ""
     ayanamsa: Ayanamsa = Ayanamsa.LAHIRI
     errors: dict[str, str] = field(default_factory=dict)
 
+    @property
+    def langs(self) -> list[str]:
+        return [self.lang] + ([self.lang2] if self.lang2 else [])
+
     @classmethod
     def parse(cls, f: dict) -> "MatchForm":
-        frm = cls(bride=_birth(f, "b_", "F"), groom=_birth(f, "g_", "M"), lang=_lang(f), ayanamsa=_ayanamsa(f))
+        lang_errors: dict[str, str] = {}
+        frm = cls(bride=_birth(f, "b_", "F"), groom=_birth(f, "g_", "M"), **_lang_fields(f, lang_errors),
+                  ayanamsa=_ayanamsa(f))
+        frm.errors.update(lang_errors)
         frm.bride.validate("b_", frm.errors)
         frm.groom.validate("g_", frm.errors)
         return frm

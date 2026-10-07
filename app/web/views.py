@@ -46,7 +46,7 @@ def analytics_tags(measurement_id: str) -> str:
 
 
 TURNSTILE_JS = '<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>'
-STATIC_VERSION = "12"
+STATIC_VERSION = "15"
 
 
 def esc(v) -> str:
@@ -380,13 +380,18 @@ def birth_fields(prefix: str, b: BirthInput, errors: dict, *, with_sex: bool) ->
             + place_field(prefix, b, errors))
 
 
-def common_options(lang: str, ayanamsa: str, errors: dict) -> str:
-    return ('<div class="row2">'
-            + select_field("lang", "Output language", lang, [(k, LANG_NAMES[k]) for k in LANGS], errors)
-            + select_field("ayanamsa", "Ayanamsa", ayanamsa,
-                           [("LAHIRI", "Lahiri (Chitrapaksha)"), ("KP", "Krishnamurti (KP)")], errors,
-                           info="ayanamsa")
-            + "</div>")
+def common_options(lang: str, ayanamsa: str, errors: dict, lang2: str = "") -> str:
+    chosen = {lang, lang2} - {""}
+    boxes = "".join(f'<span class="check-wrap"><label class="check"><input type="checkbox" name="lang" value="{k}"'
+                    f'{" checked" if k in chosen else ""}> {esc(LANG_NAMES[k])}</label></span>' for k in LANGS)
+    described = ' aria-describedby="lang-err"' if "lang" in errors else ""
+    langs = (f'<fieldset class="field lang-pick"{described}><legend class="label">'
+             f'{esc(L("Output languages — select up to two"))}</legend>'
+             f'<div class="checks" data-max="2">{boxes}</div>'
+             f'<p class="hint">{esc(L("With two, the pages print once in each language."))}</p>{_err(errors, "lang")}</fieldset>')
+    return langs + select_field("ayanamsa", "Ayanamsa", ayanamsa,
+                                [("LAHIRI", "Lahiri (Chitrapaksha)"), ("KP", "Krishnamurti (KP)")], errors,
+                                info="ayanamsa")
 
 
 def turnstile_widget(s: Settings) -> str:
@@ -470,10 +475,11 @@ def _horoscope_form(s: Settings, frm: HoroscopeForm, message, candidates, ui: st
 {birth_fields("", b, e, with_sex=True)}
 </fieldset>
 <fieldset><legend>{L("Chart options")}</legend>
-{common_options(frm.lang, frm.ayanamsa.value, e)}
+{common_options(frm.lang, frm.ayanamsa.value, e, frm.lang2)}
 <div class="field"><span class="label">{L("Include")}</span><div class="checks">{parts}</div>{_err(e, "parts")}</div>
 </fieldset>
 <fieldset><legend>{L("Family")}</legend>
+{text_field("caste", "Caste / community (optional)", frm.caste, e, maxlength=60)}
 <div class="row2">
 {text_field("gothram", "Gothram (optional)", frm.gothram, e, maxlength=40)}
 {text_field("mathulam", "Mathulam — mother's family gothram (optional)", frm.mathulam, e, maxlength=40)}
@@ -541,7 +547,7 @@ def _match_form(s: Settings, frm: MatchForm, message, candidates, ui: str) -> st
 <fieldset class="bride"><legend>{L("Bride")}</legend>{birth_fields("b_", frm.bride, e, with_sex=False)}</fieldset>
 <fieldset class="groom"><legend>{L("Groom")}</legend>{birth_fields("g_", frm.groom, e, with_sex=False)}</fieldset>
 </div>
-<fieldset><legend>{L("Options")}</legend>{common_options(frm.lang, frm.ayanamsa.value, e)}</fieldset>
+<fieldset><legend>{L("Options")}</legend>{common_options(frm.lang, frm.ayanamsa.value, e, frm.lang2)}</fieldset>
 {turnstile_widget(s)}
 <p><button type="submit" class="primary">{L("Check matching")}</button></p>
 </form>"""
@@ -601,8 +607,19 @@ def toolbar(back: str, ui: str = "en") -> str:
 
 
 def horoscope_result(s: Settings, frm: HoroscopeForm, place_label: str, chart, svgs: dict[str, str],
-                     ui: str = "en", doshas: dict | None = None) -> str:
-    lang = frm.lang
+                     ui: str = "en", doshas: dict | None = None, svgs_by_lang: dict[str, dict] | None = None) -> str:
+    """svgs: charts in frm.lang; svgs_by_lang: charts for every output language (first + optional second)."""
+    by_lang = svgs_by_lang or {frm.lang: svgs}
+    blocks = "".join(f'<div class="lang-block" lang="{lg}">{_horoscope_sheets(s, frm, place_label, chart, by_lang[lg], lg, doshas)}</div>'
+                     for lg in frm.langs if lg in by_lang)
+    pt = print_title(s, [frm.birth.name], t(frm.lang, "horoscope"))
+    body = toolbar("/horoscope", ui) + f'<div class="sheets" lang="{frm.lang}" data-print-title="{esc(pt)}">{blocks}</div>'
+    # generic title: names must not reach browser history, tab sync or any third-party script
+    return layout(s, T(ui, "res_h"), body, active="horoscope", side_ad=False, ads=False, lang=ui)
+
+
+def _horoscope_sheets(s: Settings, frm: HoroscopeForm, place_label: str, chart, svgs: dict[str, str], lang: str,
+                      doshas: dict | None) -> str:
     b = frm.birth
 
     def sib(n, m):
@@ -621,6 +638,7 @@ def horoscope_result(s: Settings, frm: HoroscopeForm, place_label: str, chart, s
         (esc(t(lang, "pob")), esc(place_label)),
     ] + astro_rows(lang, chart))
     family = _kv([
+        (esc(t(lang, "caste")), esc(frm.caste)),
         (esc(t(lang, "gothram")), esc(frm.gothram)),
         (esc(t(lang, "mathulam")), esc(frm.mathulam)),
         (esc(t(lang, "father")), parent(frm.father)),
@@ -651,10 +669,7 @@ def horoscope_result(s: Settings, frm: HoroscopeForm, place_label: str, chart, s
     if "KP_TABLES" in svgs:
         sheets.append(f'<section class="sheet kp-sheet"><header class="sheet-head small"><h2>{esc(b.name)}</h2>'
                       f'<p>KP</p></header><figure class="kp">{svgs["KP_TABLES"]}</figure>{foot}</section>')
-    pt = print_title(s, [b.name], t(lang, "horoscope"))
-    body = toolbar("/horoscope", ui) + f'<div class="sheets" lang="{lang}" data-print-title="{esc(pt)}">{"".join(sheets)}</div>'
-    # generic title: names must not reach browser history, tab sync or any third-party script
-    return layout(s, T(ui, "res_h"), body, active="horoscope", side_ad=False, ads=False, lang=ui)
+    return "".join(sheets)
 
 
 _FILENAME_BAD = re.compile(r'[\\/:*?"<>|\x00-\x1f]+')
@@ -780,8 +795,20 @@ def _dosha_sheet(lang: str, mang: dict, rahu: dict) -> str:
 
 
 def match_result(s: Settings, frm: MatchForm, labels: dict[str, str], charts: dict, svgs: dict[str, str],
-                 ashta: dict, poru: dict, ui: str = "en", mang: dict | None = None, rahu: dict | None = None) -> str:
-    lang = frm.lang
+                 ashta: dict, poru: dict, ui: str = "en", mang: dict | None = None, rahu: dict | None = None,
+                 svgs_by_lang: dict[str, dict] | None = None) -> str:
+    """svgs: bride/groom charts in frm.lang; svgs_by_lang: the same for every output language."""
+    by_lang = svgs_by_lang or {frm.lang: svgs}
+    blocks = "".join(f'<div class="lang-block" lang="{lg}">'
+                     f'{_match_sheets(s, frm, labels, charts, by_lang[lg], ashta, poru, lg, mang, rahu)}</div>'
+                     for lg in frm.langs if lg in by_lang)
+    pt = print_title(s, [frm.bride.name, frm.groom.name], t(frm.lang, "matching"))
+    body = toolbar("/match", ui) + f'<div class="sheets" lang="{frm.lang}" data-print-title="{esc(pt)}">{blocks}</div>'
+    return layout(s, T(ui, "res_m"), body, active="match", side_ad=False, ads=False, lang=ui)
+
+
+def _match_sheets(s: Settings, frm: MatchForm, labels: dict[str, str], charts: dict, svgs: dict[str, str],
+                  ashta: dict, poru: dict, lang: str, mang: dict | None, rahu: dict | None) -> str:
     en = lang == "en"
     # bride first (left), groom second (right) — always
     pair = _pair_grid(lang, frm, labels, charts, svgs)
@@ -830,9 +857,7 @@ def match_result(s: Settings, frm: MatchForm, labels: dict[str, str], charts: di
     if mang and rahu:
         sheets += (f'<section class="sheet doshas"><header class="sheet-head small"><h2>{esc(t(lang, "doshas"))} · '
                    f'{esc(title)}</h2></header>{_dosha_sheet(lang, mang, rahu)}{foot}</section>')
-    pt = print_title(s, [frm.bride.name, frm.groom.name], t(lang, "matching"))
-    body = toolbar("/match", ui) + f'<div class="sheets" lang="{lang}" data-print-title="{esc(pt)}">{sheets}</div>'
-    return layout(s, T(ui, "res_m"), body, active="match", side_ad=False, ads=False, lang=ui)
+    return sheets
 
 
 # ------------------------------------------------------------------ static content pages
@@ -939,9 +964,14 @@ _PRIVACY = {
                 "எதுவும் சேமிக்கப்படாததால் நீக்க வேண்டியதும் எதுவுமில்லை. பக்கத்தை அச்சிடுவதும் சேமிப்பதும் உங்கள் "
                 "விருப்பம்.",
                 "कुछ भी सहेजा नहीं जाता, इसलिए हटाने को कुछ नहीं है। पृष्ठ प्रिंट करना या सहेजना आपकी मर्ज़ी है।"),
-    "remember": (" Your language and theme choices are remembered in your own browser only.",
-                 " நீங்கள் தேர்ந்தெடுக்கும் மொழியும் தோற்றமும் உங்கள் உலாவியில் மட்டுமே நினைவில் வைக்கப்படுகின்றன.",
-                 " आपकी चुनी हुई भाषा और थीम केवल आपके अपने ब्राउज़र में याद रखी जाती हैं।"),
+    "remember": (" Your language and theme choices are remembered in your own browser only. If you switch language "
+                 "while filling a form, what you typed is carried to the new page within the same browser tab and "
+                 "deleted as soon as it is filled back in.",
+                 " நீங்கள் தேர்ந்தெடுக்கும் மொழியும் தோற்றமும் உங்கள் உலாவியில் மட்டுமே நினைவில் வைக்கப்படுகின்றன. படிவத்தை "
+                 "நிரப்பும்போது மொழியை மாற்றினால், நீங்கள் உள்ளிட்டவை அதே உலாவித் தாவலில் புதிய பக்கத்துக்குக் கொண்டு "
+                 "செல்லப்பட்டு, மீண்டும் நிரப்பப்பட்டவுடன் நீக்கப்படும்.",
+                 " आपकी चुनी हुई भाषा और थीम केवल आपके अपने ब्राउज़र में याद रखी जाती हैं। फ़ॉर्म भरते समय भाषा बदलने पर "
+                 "आपका भरा हुआ विवरण उसी ब्राउज़र टैब में नए पृष्ठ पर ले जाया जाता है और वापस भरते ही हटा दिया जाता है।"),
     "write": ("Write to {email}.", "தொடர்புக்கு: {email}.", "संपर्क: {email}।"),
 }
 
@@ -1030,12 +1060,6 @@ UPCOMING = [  # (status key, {lang: (title, description)})
                "பொருத்தங்கள்."),
         "hi": ("KP दशविध पोरुथम",
                "केवल चंद्र नक्षत्र नहीं, बल्कि नक्षत्र स्वामी और उप-स्वामी से KP पद्धति के दस मिलान।")}),
-    ("st_review", {
-        "en": ("Better Telugu, Malayalam and Kannada",
-               "The labels in these languages are being reviewed by native speakers."),
-        "ta": ("தெலுங்கு, மலையாளம், கன்னடம் — மேம்பாடு",
-               "இந்த மொழிகளிலுள்ள சொற்கள் அந்தந்த மொழி பேசுபவர்களால் சரிபார்க்கப்பட்டு வருகின்றன."),
-        "hi": ("बेहतर तेलुगु, मलयालम और कन्नड़", "इन भाषाओं के शब्दों की समीक्षा मूल भाषी कर रहे हैं।")}),
     ("st_exploring", {
         "en": ("More matching methods",
                "Further checks astrologers use alongside Porutham and Ashtakoota, for example Papa Samyam (balance of "

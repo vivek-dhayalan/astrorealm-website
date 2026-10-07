@@ -159,13 +159,14 @@ async def horoscope_submit(request: Request):
     try:
         rp = ResolvedPerson(frm.birth.to_person())
         chart = rp.chart(frm.ayanamsa)
-        svgs = {}
-        for part in ("RASI", "NAVAMSA"):
-            if part in frm.parts:
-                svgs[part] = svg.grid_svg(chart, frm.lang, part, degrees=False)
-        if "KP_TABLES" in frm.parts:
-            kc = rp.chart(Ayanamsa.KP)
-            svgs["KP_TABLES"] = svg.kp_svg(kc, kp.planet_significations(kc), frm.lang, compact=True)
+        kc = rp.chart(Ayanamsa.KP) if "KP_TABLES" in frm.parts else None
+        by_lang = {}
+        for lg in frm.langs:
+            svgs = {part: svg.grid_svg(chart, lg, part, degrees=False)
+                    for part in ("RASI", "NAVAMSA") if part in frm.parts}
+            if kc is not None:
+                svgs["KP_TABLES"] = svg.kp_svg(kc, kp.planet_significations(kc), lg, compact=True)
+            by_lang[lg] = svgs
         doshas = None
         if "DOSHAS" in frm.parts:
             doshas = {"manglik": {t.lower(): manglik.assess(chart, t) for t in TRADITIONS},
@@ -174,8 +175,8 @@ async def horoscope_submit(request: Request):
         msg, cands = _input_error_message(exc)
         frm.errors["place" if "PLACE" in exc.code else "dob"] = msg
         return html(views.horoscope_form(s, frm, msg, cands, ui=ui), 422, private=True)
-    return html(views.horoscope_result(s, frm, _place_label(frm.birth, rp), chart, svgs, ui=ui, doshas=doshas),
-                private=True)
+    return html(views.horoscope_result(s, frm, _place_label(frm.birth, rp), chart, by_lang[frm.lang], ui=ui,
+                                       doshas=doshas, svgs_by_lang=by_lang), private=True)
 
 
 @router.post("/match", response_class=HTMLResponse)
@@ -201,15 +202,16 @@ async def match_submit(request: Request):
             frm.errors[prefix_ + "place"] = msg
             return html(views.match_form(s, frm, f"{role.title()}: {msg}", cands, ui=ui), 422, private=True)
     charts = {r: p.chart(frm.ayanamsa) for r, p in people.items()}
-    svgs = {r: svg.grid_svg(c, frm.lang, "RASI", degrees=False) for r, c in charts.items()}
+    by_lang = {lg: {r: svg.grid_svg(c, lg, "RASI", degrees=False) for r, c in charts.items()} for lg in frm.langs}
+    svgs = by_lang[frm.lang]
     labels = {"bride": _place_label(frm.bride, people["bride"]), "groom": _place_label(frm.groom, people["groom"])}
     # matchers take (boy, girl)
     ashta = ashtakoota.match(charts["groom"], charts["bride"])
     poru = porutham.match(charts["groom"], charts["bride"])
     mang = manglik.match(charts["groom"], charts["bride"])
     rahu = nodes.match(charts["groom"], charts["bride"])
-    return html(views.match_result(s, frm, labels, charts, svgs, ashta, poru, ui=ui, mang=mang, rahu=rahu),
-                private=True)
+    return html(views.match_result(s, frm, labels, charts, svgs, ashta, poru, ui=ui, mang=mang, rahu=rahu,
+                                   svgs_by_lang=by_lang), private=True)
 
 
 def site_paths() -> list[str]:

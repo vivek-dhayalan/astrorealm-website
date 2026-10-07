@@ -206,4 +206,76 @@
     });
     window.addEventListener("afterprint", function () { document.title = savedTitle; });
   }
+  // ---------------------------------------------------------------- "select up to N" checkbox groups
+  document.querySelectorAll(".checks[data-max]").forEach(function (group) {
+    var max = parseInt(group.getAttribute("data-max"), 10) || 2;
+    function sync() {
+      var boxes = group.querySelectorAll('input[type="checkbox"]');
+      var n = group.querySelectorAll('input[type="checkbox"]:checked').length;
+      boxes.forEach(function (b) {
+        b.disabled = !b.checked && n >= max;
+        b.closest("label").classList.toggle("is-disabled", b.disabled);
+      });
+    }
+    group.addEventListener("change", sync);
+    sync();
+  });
+  // ---------------------------------------------------------------- keep a half-filled form across a language switch
+  // Switching language loads the same form in another language. Its fields are handed over in sessionStorage —
+  // this tab only, read once on the next page and deleted straight away, dropped after 10 minutes. Never sent anywhere.
+  var DRAFT = "formDraft", SKIP = { ui: 1, "cf-turnstile-response": 1 };
+  function formOnPage() { return document.querySelector("form.form[action]"); }
+  function cleanHtml(html) {
+    var ok = { B: 1, STRONG: 1, I: 1, EM: 1, U: 1, P: 1, BR: 1, UL: 1, OL: 1, LI: 1, DIV: 1, SPAN: 1 };
+    var doc = new DOMParser().parseFromString("<div>" + html + "</div>", "text/html");
+    (function walk(node) {
+      Array.prototype.slice.call(node.children).forEach(function (el) {
+        if (!ok[el.tagName]) { el.replaceWith(document.createTextNode(el.textContent)); return; }
+        Array.prototype.slice.call(el.attributes).forEach(function (at) { el.removeAttribute(at.name); });
+        walk(el);
+      });
+    })(doc.body.firstChild);
+    return doc.body.firstChild.innerHTML;
+  }
+  document.addEventListener("click", function (e) {
+    var a = e.target.closest(".lang-menu a[hreflang]"), form = formOnPage();
+    if (!a || !form) return;
+    var fields = [];
+    Array.prototype.forEach.call(form.elements, function (el) {
+      if (!el.name || SKIP[el.name] || el.type === "submit" || el.type === "button") return;
+      if (el.type === "checkbox" || el.type === "radio") fields.push([el.name, el.value, el.checked]);
+      else fields.push([el.name, el.value]);
+    });
+    var area = form.querySelector(".rte-area");
+    try {
+      var ui = form.querySelector('input[name="ui"]');
+      sessionStorage.setItem(DRAFT, JSON.stringify({ action: form.getAttribute("action"), at: Date.now(),
+        fields: fields, rte: area ? area.innerHTML : "", from: ui ? ui.value : "" }));
+    } catch (err) {}
+  });
+  (function restoreDraft() {
+    var raw = null, form = formOnPage();
+    try { raw = sessionStorage.getItem(DRAFT); sessionStorage.removeItem(DRAFT); } catch (err) { return; }
+    if (!raw || !form) return;
+    var d;
+    try { d = JSON.parse(raw); } catch (err) { return; }
+    if (!d || d.action !== form.getAttribute("action") || Date.now() - d.at > 10 * 60 * 1000) return;
+    // output languages left at the old page's default follow the new page's language instead
+    var picked = d.fields.filter(function (f) { return f[0] === "lang" && f[2]; }).map(function (f) { return f[1]; });
+    var keepLangs = !(picked.length === 1 && picked[0] === d.from);
+    d.fields.forEach(function (f) {
+      Array.prototype.forEach.call(form.elements, function (el) {
+        if (el.name !== f[0] || SKIP[el.name] || (el.name === "lang" && !keepLangs)) return;
+        if (el.type === "checkbox" || el.type === "radio") { if (el.value === f[1]) el.checked = !!f[2]; }
+        else el.value = f[1];
+      });
+    });
+    var area = form.querySelector(".rte-area");
+    if (area && d.rte) {
+      area.innerHTML = cleanHtml(d.rte);
+      var ta = form.querySelector('textarea[name="description"]');
+      if (ta) ta.value = area.innerHTML;
+    }
+    form.querySelectorAll(".checks[data-max]").forEach(function (g) { g.dispatchEvent(new Event("change")); });
+  })();
 })();

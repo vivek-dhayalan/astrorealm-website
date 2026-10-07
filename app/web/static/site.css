@@ -336,3 +336,10 @@ a.button.primary { background: var(--accent); border-color: var(--accent); color
 .dv-ONE_SIDED b, .dv-PARTLY_BALANCED b { color: #9a6a00; }
 .dv-NO_DOSHA b, .dv-CANCELLED b, .dv-MUTUAL b, .dv-SHARED b { color: #1f7a4d; }
 .dosha-note { margin-top: 2mm; }
+
+/* second output language: its pages simply follow the first set */
+.lang-block { display: contents; }
+.form fieldset.lang-pick { border: 0; border-radius: 0; background: none; padding: 0; margin: 10px 0; min-width: 0; }
+.form .lang-pick legend { padding: 0; margin-bottom: 4px; font-weight: 600; font-size: .92rem; }
+.checks label.is-disabled { opacity: .5; cursor: not-allowed; }
+.lang-pick .hint { margin-top: 4px; }
