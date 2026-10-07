@@ -1,10 +1,13 @@
 """Server-rendered website: horoscope and matching pages (generate only — nothing is stored)."""
 from __future__ import annotations
 
+import time
+
 from fastapi import APIRouter, Query, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 
 from ..core.ayanamsa import Ayanamsa
+from ..core import dasha as dasha_engine
 from ..core.timeutil import InputError
 from ..geo import get_resolver
 from ..matching import ashtakoota, kp, manglik, nodes, porutham
@@ -13,7 +16,7 @@ from ..render import svg
 from ..service import ResolvedPerson
 from . import refpages, stars, views
 from .learn import ARTICLES
-from .forms import HoroscopeForm, MatchForm, parse_body
+from .forms import DashaForm, HoroscopeForm, MatchForm, parse_body
 from .security import RateLimiter, client_ip, verify_turnstile
 from .settings import get_settings
 from .strings import LANGS
@@ -104,6 +107,7 @@ def _not_found(lang: str):
 _localized("/", lambda lang, r: html(views.home(get_settings(), lang)))
 _localized("/horoscope", lambda lang, r: html(views.horoscope_form(
     get_settings(), HoroscopeForm(lang=_output_lang(lang, r)), ui=lang)))
+_localized("/dasha", lambda lang, r: html(views.dasha_form(get_settings(), DashaForm(), ui=lang)))
 _localized("/match", lambda lang, r: html(views.match_form(
     get_settings(), MatchForm(lang=_output_lang(lang, r)), ui=lang)))
 _localized("/credits", lambda lang, r: html(views.credits(get_settings(), lang)))
@@ -180,6 +184,35 @@ async def horoscope_submit(request: Request):
                                        doshas=doshas, svgs_by_lang=by_lang, dasha=dasha), private=True)
 
 
+@router.post("/dasha", response_class=HTMLResponse)
+async def dasha_submit(request: Request):
+    s = get_settings()
+    try:
+        form = parse_body(await request.body())
+    except ValueError as exc:
+        return html(views.error_page(s, "Form too large", str(exc)), 413, private=True)
+    ui = _ui(form)
+    frm = DashaForm.parse(form)
+    blocked = await _guard(request, form)
+    if blocked:
+        return html(views.dasha_form(s, frm, blocked, ui=ui), 429 if "Too many" in blocked else 400, private=True)
+    if frm.errors:
+        return html(views.dasha_form(s, frm, "Please check the highlighted fields.", ui=ui), 422, private=True)
+    try:
+        rp = ResolvedPerson(frm.birth.to_person())
+        chart = rp.chart(frm.ayanamsa)
+    except InputError as exc:
+        msg, cands = _input_error_message(exc)
+        frm.errors["place" if "PLACE" in exc.code else "dob"] = msg
+        return html(views.dasha_form(s, frm, msg, cands, ui=ui), 422, private=True)
+    d = rp.dasha(frm.ayanamsa)
+    mds, _ = dasha_engine.mahadashas(chart.moon.longitude, rp.time.utc)
+    offset_min = round((rp.time.local - rp.time.utc.replace(tzinfo=None)).total_seconds() / 60)
+    return html(views.dasha_result(s, frm, _place_label(frm.birth, rp), chart, d, mds,
+                                   int(rp.time.utc.timestamp() * 1000), offset_min, int(time.time() * 1000), ui=ui),
+                private=True)
+
+
 @router.post("/match", response_class=HTMLResponse)
 async def match_submit(request: Request):
     s = get_settings()
@@ -218,7 +251,7 @@ async def match_submit(request: Request):
 
 def site_paths() -> list[str]:
     """Language-neutral paths of every public page (the sitemap lists each in every language)."""
-    return (["/", "/horoscope", "/match", "/learn"] + [f"/learn/{a.slug}" for a in ARTICLES]
+    return (["/", "/horoscope", "/match", "/dasha", "/learn"] + [f"/learn/{a.slug}" for a in ARTICLES]
             + refpages.sitemap_paths() + ["/upcoming", "/credits", "/privacy", "/terms"])
 
 

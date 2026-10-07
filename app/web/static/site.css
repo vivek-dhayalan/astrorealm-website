@@ -74,7 +74,7 @@ a { color: var(--accent); }
 .ad-side
 /* home */
 .hero h1 { margin: .5rem 0; font-size: 1.8rem; }
-.cards { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); margin-top: 16px; }
+.cards { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); margin-top: 16px; }
 .card { display: block; padding: 20px; background: var(--paper); border: 1px solid var(--line);
   border-radius: var(--radius); color: var(--ink); text-decoration: none; }
 .card:hover { border-color: var(--accent); }
@@ -309,7 +309,7 @@ a.button.primary { background: var(--accent); border-color: var(--accent); color
 :root[data-theme="dark"] .theme-menu summary .t-dark { display: block; }
 @media (max-width: 640px) {
   /* brand and the two menus share the first row; the page links wrap underneath */
-  .site-head > nav { order: 3; width: 100%; }
+  .site-head > nav { order: 3; width: 100%; flex-wrap: wrap; gap: 2px 14px; }
   .head-tools { order: 2; }
 }
 
@@ -359,3 +359,46 @@ a.button.primary { background: var(--accent); border-color: var(--accent); color
 .pair-dasha h3 { margin-top: 0; }
 .dasha-table.timed { font-size: 6.3pt; }
 .dasha-table.timed td, .dasha-table.timed th { padding: 0.45mm 0.8mm; }
+
+/* dasha page */
+.cta { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px;
+  margin: 0 0 18px; padding: 12px 16px; border: 1px solid var(--line); border-left: 4px solid var(--accent);
+  border-radius: var(--radius); background: var(--paper); }
+.cta p { margin: 0; flex: 1 1 280px; }
+.cta .button { flex: none; }
+a.button { display: inline-block; padding: 8px 14px; border-radius: var(--radius); background: var(--accent);
+  color: var(--accent-ink); text-decoration: none; font-weight: 600; }
+a.button:hover { filter: brightness(1.08); }
+.dasha-page h1 { margin-bottom: 12px; }
+.dx-top { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; margin-bottom: 16px; }
+.dx-card { padding: 12px 14px; background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius); }
+.dx-top .kv { width: 100%; }
+.dasha-x { margin-bottom: 12px; }
+.dx-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+.dx-bar .hint { margin: 0; }
+.dx-level { border: 1px solid var(--line); border-radius: var(--radius); background: var(--paper); padding: 10px 12px 12px;
+  margin: 0 0 10px; }
+/* two levels per row: mahadasha | bhukti, antara | sookshma, then prana across */
+.dx-levels { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; align-items: start; }
+.dx-levels .dx-level { margin: 0; }
+.dx-l4 { grid-column: 1 / -1; }
+.dx-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; font-size: 1.05rem; margin: 0 0 8px; }
+.dx-path { font-size: .88rem; font-weight: 500; color: var(--muted); }
+.dx-wrap { overflow-x: auto; }
+.dx-table { width: 100%; font-size: .92rem; }
+.dx-table td, .dx-table th { padding: 6px 10px; white-space: nowrap; }
+.dx-table tr.past td { color: var(--muted); }
+.dx-table tr.now td { background: var(--rj-bg); color: var(--rj-ink); font-weight: 600; }
+.dx-table tr.sel td:first-child { box-shadow: inset 4px 0 0 var(--accent); }
+.dx-table tr.sel td { font-weight: 600; }
+.dx-open { font: inherit; color: var(--accent); background: none; border: 0; padding: 0; cursor: pointer;
+  text-decoration: underline; text-underline-offset: 3px; }
+.dx-table tr.past .dx-open { color: var(--muted); }
+.dx-table tr.now .dx-open { color: inherit; }
+.dx-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #c0261c; margin-left: 6px;
+  vertical-align: middle; }
+.dx-today { font: inherit; font-size: .9rem; }
+.dx-levels .dx-table { font-size: .82rem; }
+.dx-levels .dx-table td, .dx-levels .dx-table th { padding: 5px 6px; }
+.dx-levels .dx-dot { margin-left: 4px; }
+@media (max-width: 1060px) { .dx-levels { grid-template-columns: minmax(0, 1fr); } }

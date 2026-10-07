@@ -278,4 +278,118 @@
     }
     form.querySelectorAll(".checks[data-max]").forEach(function (g) { g.dispatchEvent(new Event("change")); });
   })();
+  // ---------------------------------------------------------------- take birth details to another form page
+  // Links marked data-carry-to (horoscope ⇄ dasha) hand the details over the same way as a language switch:
+  // sessionStorage, this tab only, deleted once filled in. Never in the URL.
+  var CARRY = ["name", "sex", "dob", "tob", "place", "lat", "lon", "ayanamsa"];
+  document.addEventListener("click", function (e) {
+    var a = e.target.closest("a[data-carry-to]");
+    if (!a) return;
+    var fields = [], given = a.getAttribute("data-carry"), form = formOnPage();
+    if (given) {
+      try { var v = JSON.parse(given); CARRY.forEach(function (k) { if (v[k]) fields.push([k, String(v[k])]); }); } catch (err) {}
+    } else if (form) {
+      // from a form, the ayanamsa may just be that page's default (Lahiri on horoscope, KP on dasha): leave it
+      CARRY.forEach(function (k) { var el = form.elements[k]; if (k !== "ayanamsa" && el && el.value) fields.push([k, el.value]); });
+    }
+    if (!fields.length) return;
+    try {
+      sessionStorage.setItem(DRAFT, JSON.stringify({ action: a.getAttribute("data-carry-to"), at: Date.now(),
+        fields: fields, rte: "", from: "" }));
+    } catch (err) {}
+  });
+
+  // ---------------------------------------------------------------- dasha explorer: mahadasha → … → prana
+  // All levels stay on the page as a hierarchy: picking a period in one table opens the next table below it.
+  (function () {
+    var box = document.getElementById("dasha-x"), src = document.getElementById("dasha-data");
+    if (!box || !src) return;
+    var D;
+    try { D = JSON.parse(src.textContent); } catch (err) { return; }
+    var LBL = D.labels, ORDER = D.order, Y = D.years, TOTAL = 120, LAST = 4;
+    var sel = [];  // the period picked at each level: [lord, startMs, endMs]
+    function seq(first) { var i = ORDER.indexOf(first); return ORDER.slice(i).concat(ORDER.slice(0, i)); }
+    function subs(p) {
+      var out = [], start = p[1], total = p[2] - p[1];
+      seq(p[0]).forEach(function (lord) { var end = start + total * Y[lord] / TOTAL; out.push([lord, start, end]); start = end; });
+      out[out.length - 1][2] = p[2];
+      return out;
+    }
+    function pad(n) { return (n < 10 ? "0" : "") + n; }
+    function fmt(ms) {
+      var d = new Date(ms + D.offsetMin * 60000);
+      return pad(d.getUTCDate()) + "-" + pad(d.getUTCMonth() + 1) + "-" + d.getUTCFullYear() + " " +
+        pad(d.getUTCHours()) + ":" + pad(d.getUTCMinutes()) + ":" + pad(d.getUTCSeconds());
+    }
+    function dur(ms) {
+      var days = ms / 86400000, u = LBL.units;
+      if (days >= 365) return u.y.replace("{n}", (days / 365.25).toFixed(2));
+      if (days >= 1) return u.d.replace("{n}", days.toFixed(1));
+      return u.h.replace("{n}", (days * 24).toFixed(1));
+    }
+    function el(tag, cls, text) { var x = document.createElement(tag); if (cls) x.className = cls; if (text != null) x.textContent = text; return x; }
+    function pname(p) { return LBL.planet[p[0]] || p[0]; }
+    function same(a, b) { return a && b && a[0] === b[0] && a[1] === b[1]; }
+    var levelsBox = box.querySelector(".dx-levels"), today = box.querySelector(".dx-today");
+    function table(level, rows) {
+      var now = Date.now(), t = el("table", "grid dx-table"), th = el("thead"), tr = el("tr");
+      LBL.cols.forEach(function (c, i) { tr.appendChild(el("th", i === 3 ? "num" : "", c)); });
+      th.appendChild(tr); t.appendChild(th);
+      var tb = el("tbody");
+      rows.forEach(function (p) {
+        if (p[2] <= D.birth) return;  // wholly before birth
+        var shown = Math.max(p[1], D.birth), running = p[1] <= now && now < p[2];
+        var cls = [running ? "now" : (p[2] <= now ? "past" : ""), same(sel[level], p) ? "sel" : ""].join(" ").trim();
+        var r = el("tr", cls), c0 = el("td");
+        if (level < LAST) {
+          var b = el("button", "dx-open", pname(p)); b.type = "button";
+          b.setAttribute("aria-expanded", same(sel[level], p) ? "true" : "false");
+          b.addEventListener("click", function () { pick(level, p); });
+          c0.appendChild(b);
+        } else c0.textContent = pname(p);
+        if (running) { var dot = el("span", "dx-dot"); dot.title = LBL.running; dot.setAttribute("aria-label", LBL.running); c0.appendChild(dot); }
+        r.appendChild(c0);
+        r.appendChild(el("td", "", fmt(shown)));
+        r.appendChild(el("td", "", fmt(p[2])));
+        r.appendChild(el("td", "num", dur(p[2] - shown)));
+        tb.appendChild(r);
+      });
+      t.appendChild(tb);
+      return t;
+    }
+    function render() {
+      levelsBox.textContent = "";
+      var rows = D.mds;
+      for (var level = 0; level <= LAST; level++) {
+        var sec = el("section", "dx-level dx-l" + level), h = el("h2", "dx-head");
+        h.appendChild(el("span", "", LBL.levels[level]));
+        if (level) h.appendChild(el("span", "dx-path", sel.slice(0, level).map(pname).join(" › ")));
+        sec.appendChild(h);
+        var wrap = el("div", "dx-wrap"); wrap.appendChild(table(level, rows)); sec.appendChild(wrap);
+        levelsBox.appendChild(sec);
+        if (!sel[level] || level === LAST) break;
+        rows = subs(sel[level]);
+      }
+      today.hidden = false;
+    }
+    function pick(level, p) {
+      sel = sel.slice(0, level);
+      sel[level] = p;
+      render();
+      var next = levelsBox.querySelector(".dx-l" + (level + 1));
+      if (next && next.scrollIntoView) next.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+    function toToday() {
+      var now = Date.now(), rows = D.mds;
+      sel = [];
+      for (var lvl = 0; lvl < LAST; lvl++) {
+        var cur = rows.filter(function (x) { return x[1] <= now && now < x[2]; })[0];
+        if (!cur) break;
+        sel.push(cur); rows = subs(cur);
+      }
+      render();
+    }
+    today.addEventListener("click", toToday);
+    toToday();  // open the running chain on arrival: all five levels, today marked
+  })();
 })();

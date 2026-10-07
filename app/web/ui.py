@@ -11,7 +11,7 @@ import re
 SITE_LANGS = ("en", "ta", "hi", "te", "ml", "kn")
 BASE_LANGS = ("en", "ta", "hi")      # the tuples in this file hold these three, in this order
 LANG_LABEL = {"en": "English", "ta": "தமிழ்", "hi": "हिन्दी", "te": "తెలుగు", "ml": "മലയാളം", "kn": "ಕನ್ನಡ"}
-LOCALIZED = re.compile(r"^/(?:$|horoscope$|match$|learn(?:/.*)?$|upcoming$|credits$|privacy$|terms$)")
+LOCALIZED = re.compile(r"^/(?:$|horoscope$|match$|dasha$|learn(?:/.*)?$|upcoming$|credits$|privacy$|terms$)")
 
 
 def prefix(lang: str) -> str:
@@ -154,6 +154,41 @@ _T: dict[str, tuple[str, str, str]] = {
 
     # result pages
     "res_h": ("Your horoscope", "உங்கள் ஜாதகம்", "आपकी कुंडली"),
+    "res_d": ("Dasha result", "தசை முடிவு", "दशा परिणाम"),
+    "nav_dasha": ("Dasha", "தசை", "दशा"),
+    "dform_h1": ("Vimshottari dasha calculator", "விம்சோத்தரி தசை கணிப்பு", "विंशोत्तरी दशा गणना"),
+    "dform_lead": (
+        "Enter the birth details to see every dasha period from birth — mahadasha, bhukti, antara, sookshma and "
+        "prana — with the running period marked. Uses the KP ayanamsa unless you choose Lahiri.",
+        "பிறப்பு விவரங்களை உள்ளிட்டு, பிறப்பு முதல் எல்லாத் தசைக் காலங்களையும் — மகா தசை, புக்தி, அந்தரம், "
+        "சூட்சுமம், பிராணம் — நடப்புக் காலம் குறிக்கப்பட்டதாகப் பாருங்கள். லாகிரி தேர்ந்தெடுக்காவிட்டால் KP அயனாம்சம் "
+        "பயன்படும்.",
+        "जन्म विवरण भरें और जन्म से हर दशा अवधि देखें — महादशा, अंतर्दशा, प्रत्यंतर, सूक्ष्म और प्राण — चालू अवधि "
+        "चिह्नित के साथ। लाहिड़ी न चुनें तो KP अयनांश लिया जाता है।"),
+    "cta_dasha_q": ("Looking for the dasha periods?", "தசைக் காலங்கள் வேண்டுமா?", "दशा अवधियाँ देखनी हैं?"),
+    "cta_dasha_text": (
+        "See every mahadasha, bhukti, antara, sookshma and prana for this birth, with the running period marked. "
+        "The details you entered come along.",
+        "இந்தப் பிறப்புக்கான எல்லா மகா தசை, புக்தி, அந்தரம், சூட்சுமம், பிராணம் — நடப்புக் காலம் குறிக்கப்பட்டு. "
+        "நீங்கள் உள்ளிட்ட விவரங்கள் அப்படியே எடுத்துச் செல்லப்படும்.",
+        "इस जन्म की हर महादशा, अंतर्दशा, प्रत्यंतर, सूक्ष्म और प्राण — चालू अवधि चिह्नित। आपके भरे विवरण साथ चले "
+        "जाएँगे।"),
+    "cta_dasha_btn": ("Open the dasha calculator →", "தசை கணிப்புக்குச் செல் →", "दशा कैलकुलेटर खोलें →"),
+    "cta_h_q": ("Looking for the full horoscope?", "முழு ஜாதகம் வேண்டுமா?", "पूरी कुंडली चाहिए?"),
+    "cta_h_text": (
+        "Rasi and Navamsa charts, family and personal details and doshas, neatly formatted to print. "
+        "The details you entered come along.",
+        "ராசி, நவாம்சக் கட்டங்கள், குடும்ப, சுய விவரங்கள், தோஷங்கள் — அச்சிட அழகாக வடிவமைக்கப்பட்டவை. நீங்கள் "
+        "உள்ளிட்ட விவரங்கள் அப்படியே எடுத்துச் செல்லப்படும்.",
+        "राशि और नवांश चार्ट, पारिवारिक व व्यक्तिगत विवरण और दोष — प्रिंट के लिए सुव्यवस्थित। आपके भरे विवरण साथ "
+        "चले जाएँगे।"),
+    "cta_h_btn": ("Create the horoscope →", "ஜாதகம் உருவாக்கு →", "कुंडली बनाएँ →"),
+    "card_d": ("Vimshottari dasha", "விம்சோத்தரி தசை", "विंशोत्तरी दशा"),
+    "card_d_desc": ("Every dasha period from birth — mahadasha down to prana — with dates, time left and the "
+                    "running period marked.",
+                    "பிறப்பு முதல் எல்லாத் தசைக் காலங்களும் — மகா தசை முதல் பிராணம் வரை — தேதிகள், மீதமுள்ள காலம், "
+                    "நடப்புக் காலத்துடன்.",
+                    "जन्म से हर दशा अवधि — महादशा से प्राण तक — तिथियों, शेष समय और चालू अवधि के साथ।"),
     "res_m": ("Matching result", "பொருத்த முடிவு", "मिलान परिणाम"),
     "print": ("Print", "அச்சிடு", "प्रिंट करें"),
     "edit": ("Edit details", "விவரங்களைத் திருத்த", "विवरण बदलें"),
@@ -317,6 +352,17 @@ PAGE_META = {
         "ta": ("பயன்பாட்டு விதிமுறைகள் | {site}", "{site}-இன் இலவச ஜாதக, திருமணப் பொருத்தக் கருவிகளைப் "
                "பயன்படுத்துவதற்கான விதிமுறைகள்."),
         "hi": ("उपयोग की शर्तें | {site}", "{site} के मुफ़्त कुंडली और कुंडली मिलान टूल के उपयोग की शर्तें।"),
+    },
+    "dasha": {
+        "en": ("Vimshottari Dasha Calculator – Mahadasha, Bhukti, Antara | {site}",
+               "Vimshottari dasha from birth details: mahadasha, bhukti, antara, sookshma and prana periods with dates "
+               "and the running period marked. KP or Lahiri ayanamsa."),
+        "ta": ("விம்சோத்தரி தசை கணிப்பு – மகா தசை, புக்தி, அந்தரம் | {site}",
+               "பிறப்பு விவரங்களிலிருந்து விம்சோத்தரி தசை: மகா தசை, புக்தி, அந்தரம், சூட்சுமம், பிராணம் — தேதிகளுடன், "
+               "நடப்புக் காலம் குறிக்கப்பட்டு. KP அல்லது லாகிரி அயனாம்சம்."),
+        "hi": ("विंशोत्तरी दशा कैलकुलेटर – महादशा, अंतर्दशा, प्रत्यंतर | {site}",
+               "जन्म विवरण से विंशोत्तरी दशा: महादशा, अंतर्दशा, प्रत्यंतर, सूक्ष्म और प्राण अवधियाँ तिथियों सहित, चालू "
+               "अवधि चिह्नित। KP या लाहिड़ी अयनांश।"),
     },
     "upcoming": {
         "en": ("Coming Soon: KP Matching, Templates and More | {site}",

@@ -8,15 +8,15 @@ from __future__ import annotations
 import contextvars
 import json
 import re
-from datetime import datetime
+from datetime import datetime, timezone
 from html import escape
 from zoneinfo import ZoneInfo
 
-from ..core.reference import NAKSHATRAS, RASHIS
+from ..core.reference import NAKSHATRAS, RASHIS, VIMSHOTTARI
 from ..render import i18n
 from . import learn_hi, learn_kn, learn_ml, learn_ta, learn_te
 from .learn import ARTICLES, MODIFIED, PUBLISHED, Article
-from .forms import CHART_PARTS, BirthInput, HoroscopeForm, MatchForm
+from .forms import CHART_PARTS, BirthInput, DashaForm, HoroscopeForm, MatchForm
 from .settings import Settings
 from .strings import LANG_NAMES, LANGS, t
 from .form_text import TIPS as FORM_TIPS, ft
@@ -46,7 +46,7 @@ def analytics_tags(measurement_id: str) -> str:
 
 
 TURNSTILE_JS = '<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>'
-STATIC_VERSION = "17"
+STATIC_VERSION = "20"
 
 
 def esc(v) -> str:
@@ -220,7 +220,8 @@ def layout(s: Settings, title: str, body: str, *, active: str = "", map_page: bo
     nav = "".join(
         f'<a href="{href}"{cur if key == active else ""}>{label}</a>'
         for key, href, label in (("horoscope", "/horoscope", T(lang, "nav_horoscope")),
-                                 ("match", "/match", T(lang, "nav_match")), ("learn", "/learn", T(lang, "nav_learn")),
+                                 ("match", "/match", T(lang, "nav_match")), ("dasha", "/dasha", T(lang, "nav_dasha")),
+                                 ("learn", "/learn", T(lang, "nav_learn")),
                                  ("credits", "/credits", T(lang, "nav_credits"))))
     consent = ""
     if ads_on or ga_on:
@@ -424,7 +425,7 @@ def home(s: Settings, lang: str = "en") -> str:
     rasis = "".join(f'<li><a href="/learn/rasi/{RASI_SLUGS[i]}">{esc(names(lang, "rashi", i))}</a></li>'
                     for i in range(12))
     cards = "".join(f'<a class="card" href="{href}"><h2>{esc(T(lang, k))}</h2><p>{esc(T(lang, k + "_desc"))}</p></a>'
-                    for href, k in (("/horoscope", "card_h"), ("/match", "card_m"),
+                    for href, k in (("/horoscope", "card_h"), ("/match", "card_m"), ("/dasha", "card_d"),
                                     ("/learn/nakshatra-porutham-table", "card_table"), ("/learn", "card_learn")))
     body = f"""<section class="hero"><h1>{esc(T(lang, "home_h1"))}</h1>
 <p>{esc(T(lang, "home_intro"))}</p></section>
@@ -473,6 +474,7 @@ def _horoscope_form(s: Settings, frm: HoroscopeForm, message, candidates, ui: st
     living = [("living", "Living"), ("deceased", "Deceased")]
     body = f"""<h1>{esc(T(ui, "hform_h1"))}</h1>
 <p class="lead">{esc(T(ui, "hform_lead"))}</p>{form_note(ui)}
+{cta(ui, "/dasha")}
 {banner(message, candidates)}
 <form method="post" action="/horoscope" class="form" novalidate>{ui_field(ui)}
 <fieldset><legend>{L("Birth details")}</legend>
@@ -610,10 +612,34 @@ def astro_rows(lang: str, chart) -> list[tuple[str, str]]:
     ]
 
 
-def toolbar(back: str, ui: str = "en") -> str:
+def toolbar(back: str, ui: str = "en", extra: str = "", a5_hint: bool = True) -> str:
+    hint = f'<span class="hint">{esc(T(ui, "print_hint"))}</span>' if a5_hint else ""
     return (f'<div class="toolbar no-print"><button type="button" class="primary" data-action="print">'
             f'{esc(T(ui, "print"))}</button><button type="button" data-action="back">{esc(T(ui, "edit"))}</button>'
-            f'<a href="{back}">{esc(T(ui, "again"))}</a><span class="hint">{esc(T(ui, "print_hint"))}</span></div>')
+            f'<a href="{back}">{esc(T(ui, "again"))}</a>{extra}{hint}</div>')
+
+
+CARRY_FIELDS = ("name", "sex", "dob", "tob", "place", "lat", "lon", "ayanamsa")
+
+
+def carry_link(to: str, text: str, birth: BirthInput | None = None, ayanamsa: str = "", cls: str = "") -> str:
+    """Link to another form page that takes the birth details along (site.js hands them over in sessionStorage
+    for this tab only — never in the URL). Without `birth`, the fields are read from the form on the page."""
+    data = ""
+    if birth is not None:
+        vals = {"name": birth.name, "sex": birth.sex, "dob": birth.dob, "tob": birth.tob, "place": birth.place,
+                "lat": "" if birth.lat is None else f"{birth.lat:.5f}", "lon": "" if birth.lon is None else f"{birth.lon:.5f}",
+                "ayanamsa": ayanamsa}
+        data = f' data-carry="{esc(json.dumps(vals, ensure_ascii=False))}"'
+    c = f' class="{cls}"' if cls else ""
+    return f'<a href="{to}"{c} data-carry-to="{to}"{data}>{esc(text)}</a>'
+
+
+def cta(ui: str, to: str, birth: BirthInput | None = None, ayanamsa: str = "") -> str:
+    """'Looking for …? … [Open …]' box that takes the birth details along to the other page."""
+    k = "cta_dasha" if to == "/dasha" else "cta_h"
+    return (f'<aside class="cta no-print"><p><b>{esc(T(ui, k + "_q"))}</b> {esc(T(ui, k + "_text"))}</p>'
+            f'{carry_link(to, T(ui, k + "_btn"), birth, ayanamsa, cls="button")}</aside>')
 
 
 def horoscope_result(s: Settings, frm: HoroscopeForm, place_label: str, chart, svgs: dict[str, str],
@@ -624,7 +650,9 @@ def horoscope_result(s: Settings, frm: HoroscopeForm, place_label: str, chart, s
     blocks = "".join(f'<div class="lang-block" lang="{lg}">{_horoscope_sheets(s, frm, place_label, chart, by_lang[lg], lg, doshas, dasha)}</div>'
                      for lg in frm.langs if lg in by_lang)
     pt = print_title(s, [frm.birth.name], t(frm.lang, "horoscope"))
-    body = toolbar("/horoscope", ui) + f'<div class="sheets" lang="{frm.lang}" data-print-title="{esc(pt)}">{blocks}</div>'
+    to_dasha = carry_link("/dasha", T(ui, "cta_dasha_btn"), frm.birth, frm.ayanamsa.value)
+    body = (toolbar("/horoscope", ui, to_dasha)
+            + f'<div class="sheets" lang="{frm.lang}" data-print-title="{esc(pt)}">{blocks}</div>')
     # generic title: names must not reach browser history, tab sync or any third-party script
     return layout(s, T(ui, "res_h"), body, active="horoscope", side_ad=False, ads=False, lang=ui)
 
@@ -683,6 +711,97 @@ def _horoscope_sheets(s: Settings, frm: HoroscopeForm, place_label: str, chart, 
         sheets.append(f'<section class="sheet kp-sheet"><header class="sheet-head small"><h2>{esc(b.name)}</h2>'
                       f'<p>KP</p></header><figure class="kp">{svgs["KP_TABLES"]}</figure>{foot}</section>')
     return "".join(sheets)
+
+
+# ------------------------------------------------------------------ dasha page
+def dasha_form(s: Settings, frm: DashaForm, message: str | None = None, candidates: list[dict] | None = None,
+               ui: str = "en") -> str:
+    ui = site_lang(ui)
+    token = _FORM_LANG.set(ui)
+    try:
+        e = frm.errors
+        ayan = select_field("ayanamsa", "Ayanamsa", frm.ayanamsa.value,
+                            [("KP", "Krishnamurti (KP)"), ("LAHIRI", "Lahiri (Chitrapaksha)")], e, info="ayanamsa")
+        body = f"""<h1>{esc(T(ui, "dform_h1"))}</h1>
+<p class="lead">{esc(T(ui, "dform_lead"))}</p>
+{cta(ui, "/horoscope")}
+{banner(message, candidates)}
+<form method="post" action="/dasha" class="form" novalidate>{ui_field(ui)}
+<fieldset><legend>{L("Birth details")}</legend>
+{birth_fields("", frm.birth, e, with_sex=True)}
+{ayan}
+</fieldset>
+{turnstile_widget(s)}
+<p><button type="submit" class="primary">{L("Calculate dasha")}</button></p>
+</form>"""
+    finally:
+        _FORM_LANG.reset(token)
+    m = meta(s, "dasha", ui)
+    return layout(s, T(ui, "nav_dasha"), body, active="dasha", map_page=True, turnstile=True, path="/dasha", lang=ui,
+                  **m, ld=[app_ld(s, lpath(ui, "/dasha"), f"{s.site_name} Vimshottari dasha calculator",
+                                  m["description"])])
+
+
+def _duration(lang: str, ms: float) -> str:
+    days = ms / 86400000
+    if days >= 365:
+        return t(lang, "u_years", n=f"{days / 365.25:.2f}")
+    if days >= 1:
+        return t(lang, "u_days", n=f"{days:.1f}")
+    return t(lang, "u_hours", n=f"{days * 24:.1f}")
+
+
+def dasha_result(s: Settings, frm: DashaForm, place_label: str, chart, d: dict, mds: list, birth_ms: int,
+                 offset_min: int, now_ms: int, ui: str = "en") -> str:
+    """Summary + a drill-down explorer: mahadasha → bhukti → antara → sookshma → prana (site.js)."""
+    lang = site_lang(ui)
+    b = frm.birth
+    L = i18n.get(lang)
+    planet = L["planet"]
+    summary, _ = _dasha_blocks(lang, d)
+    birth = _kv([(esc(t(lang, "name")), esc(b.name)), (esc(t(lang, "sex")), esc(t(lang, b.sex))),
+                 (esc(t(lang, "dob")), esc(_fmt_date(b.dob))), (esc(t(lang, "tob")), esc(_fmt_time(b.tob))),
+                 (esc(t(lang, "pob")), esc(place_label))] + astro_rows(lang, chart)
+                + [(esc(t(lang, "ayanamsa")), esc(t(lang, frm.ayanamsa.value)))])
+    levels = [t(lang, k) for k in ("mahadasha", "bhukti", "antara", "sookshma", "prana")]
+    data = {
+        "order": [lord for lord, _ in VIMSHOTTARI],
+        "years": dict(VIMSHOTTARI),
+        "mds": [[p.lord, int(p.start.timestamp() * 1000), int(p.end.timestamp() * 1000)] for p in mds],
+        "birth": birth_ms, "offsetMin": offset_min,
+        "labels": {"planet": planet, "levels": levels, "all": t(lang, "all_md"), "running": t(lang, "running"),
+                   "cols": [t(lang, "col_lord"), t(lang, "col_from"), t(lang, "col_to"), t(lang, "col_duration")],
+                   "units": {"y": t(lang, "u_years"), "d": t(lang, "u_days"), "h": t(lang, "u_hours")}},
+    }
+    payload = json.dumps(data, ensure_ascii=False).replace("</", "<\\/")
+
+    # first paint (and no-JS): the mahadasha table; site.js takes over from here
+    def fmt(ms):
+        return datetime.fromtimestamp((ms + offset_min * 60000) / 1000, timezone.utc).strftime("%d-%m-%Y %H:%M:%S")
+    rows = []
+    for lord, start, end in data["mds"]:
+        shown = max(start, birth_ms)
+        cls = "now" if start <= now_ms < end else ("past" if end <= now_ms else "")
+        rows.append(f'<tr class="{cls}"><td>{esc(planet.get(lord, lord))}</td><td>{fmt(shown)}</td><td>{fmt(end)}</td>'
+                    f'<td class="num">{esc(_duration(lang, end - shown))}</td></tr>')
+    cols = data["labels"]["cols"]
+    first = (f'<table class="grid dx-table"><thead><tr><th>{esc(cols[0])}</th><th>{esc(cols[1])}</th><th>{esc(cols[2])}</th>'
+             f'<th class="num">{esc(cols[3])}</th></tr></thead><tbody>{"".join(rows)}</tbody></table>')
+    to_h = carry_link("/horoscope", T(lang, "cta_h_btn"), b, frm.ayanamsa.value)
+    body = (toolbar("/dasha", lang, to_h, a5_hint=False) + f"""<div class="dasha-page">
+<h1>{esc(T(lang, "dform_h1"))}</h1>
+<div class="dx-top"><section class="dx-card">{birth}</section><section class="dx-card">{summary}</section></div>
+<section class="dasha-x" id="dasha-x">
+<div class="dx-bar"><p class="hint dx-hint">{esc(t(lang, "tap_hint"))}</p>
+<button type="button" class="dx-today" hidden>{esc(t(lang, "today_btn"))}</button></div>
+<div class="dx-levels" aria-live="polite"><section class="dx-level"><h2 class="dx-head">{esc(levels[0])}</h2>
+<div class="dx-wrap">{first}</div></section></div>
+</section>
+<p class="small">{esc(t(lang, "dasha_note"))}</p>
+{cta(lang, "/horoscope", b, frm.ayanamsa.value)}
+</div>
+<script type="application/json" id="dasha-data">{payload}</script>""")
+    return layout(s, T(lang, "res_d"), body, active="dasha", side_ad=False, ads=False, lang=lang)
 
 
 # ------------------------------------------------------------------ Vimshottari dasha

@@ -27,10 +27,17 @@ def fresh_limiter():
                                   "/hi/learn/nakshatra/rohini", "/ta/learn/nakshatra-porutham-table",
                                   "/learn/nakshatras", "/learn/rasis", "/learn/nakshatra-porutham-table",
                                   "/learn/nakshatra/rohini", "/learn/rasi/mesha", "/horoscope?lang=ta",
-                                  "/learn/ayanamsa", "/learn/porutham", "/sitemap.xml",
+                                  "/learn/ayanamsa", "/learn/porutham", "/sitemap.xml", "/dasha", "/ta/dasha", "/kn/dasha",
                                   "/static/site.css", "/static/site.js"])
 def test_pages_load(path):
     assert client.get(path).status_code == 200
+
+
+def test_dasha_page_generates():
+    r = client.post("/dasha", data={k: v for k, v in BIRTH.items() if k != "ayanamsa"})  # KP when not chosen
+    assert r.status_code == 200 and r.headers["cache-control"] == "no-store"
+    assert 'id="dasha-data"' in r.text and "Test Person" in r.text and "Krishnamurti (KP)" in r.text
+    assert client.post("/dasha", data={**BIRTH, "dob": ""}).status_code == 422
 
 
 def test_horoscope_generates_and_is_not_cached():

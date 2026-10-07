@@ -1,4 +1,6 @@
 """Website: sanitizer, forms, labels, rendering order, rate limit (no FastAPI needed)."""
+import json
+
 import pytest
 
 from app.render import i18n
@@ -6,7 +8,7 @@ from app.service import ResolvedPerson
 from app.matching import ashtakoota, manglik, nodes, porutham
 from app.render import svg
 from app.web import strings, views
-from app.web.forms import HoroscopeForm, MatchForm, parse_body
+from app.web.forms import DashaForm, HoroscopeForm, MatchForm, parse_body
 from app.web.sanitize import clean_html
 from app.web.security import RateLimiter
 from app.web.settings import Settings
@@ -259,6 +261,7 @@ def _all_public_pages(s):
         pages.update({P("/"): views.home(s, lang), P("/learn"): views.learn_index(s, lang),
                       P("/horoscope"): views.horoscope_form(s, HoroscopeForm(), ui=lang),
                       P("/match"): views.match_form(s, MatchForm(), ui=lang), P("/credits"): views.credits(s, lang),
+                      P("/dasha"): views.dasha_form(s, DashaForm(), ui=lang),
                       P("/privacy"): views.privacy(s, lang), P("/terms"): views.terms(s, lang),
                       P("/upcoming"): views.upcoming(s, lang),
                       P("/learn/nakshatras"): refpages.nakshatra_index(s, lang),
@@ -299,7 +302,7 @@ def test_hreflang_links_are_reciprocal():
                 assert f'href="https://astrorealm.in{path}"' in pages[href], (path, href)
     assert '<html lang="ta">' in pages["/ta"] and "ஜாதகம்" in pages["/ta"]
     from app.web.ui import SITE_LANGS
-    assert len(pages) == len(SITE_LANGS) * 57  # same 57 pages in each language
+    assert len(pages) == len(SITE_LANGS) * 58  # same 58 pages in each language
 
 
 def test_language_is_kept_across_links():
@@ -322,7 +325,7 @@ def test_same_home_layout_in_every_language():
     from app.web.ui import SITE_LANGS
     for lang in SITE_LANGS:
         h = views.home(s, lang)
-        assert (h.count('class="card"'), h.count("/learn/nakshatra/"), h.count("/learn/rasi/")) == (4, 27, 12), lang
+        assert (h.count('class="card"'), h.count("/learn/nakshatra/"), h.count("/learn/rasi/")) == (5, 27, 12), lang
 
 
 def test_result_page_follows_site_language():
@@ -520,3 +523,30 @@ def test_dasha_on_horoscope_and_matching(lang):
                               dashas={r: pp.dasha(m.ayanamsa) for r, pp in people.items()})
     sheet = html[html.index('pair-dasha'):]
     assert sheet.index(t(lang, "bride")) < sheet.index(t(lang, "groom")) and sheet.count('class="now"') == 4
+
+
+
+@pytest.mark.parametrize("lang", ["en", "kn"])
+def test_dasha_page(lang):
+    from datetime import datetime, timezone
+    from app.core import dasha as D
+    from app.web.strings import t
+    form = views.dasha_form(Settings(), DashaForm(), ui=lang)
+    assert 'action="/dasha"' in form and '<option value="KP" selected>' in form  # KP by default
+    assert 'data-carry-to="/horoscope"' in form and 'href="/dasha"' in views.home(Settings(), "en")  # nav
+    assert 'data-carry-to="/dasha"' in views.horoscope_form(Settings(), HoroscopeForm(), ui=lang)
+    frm = DashaForm.parse({"name": ["Ravi"], "sex": ["M"], "dob": ["1985-05-19"], "tob": ["05:44"], "place": ["Trichy"],
+                           "lat": ["10.7905"], "lon": ["78.7047"]})
+    assert not frm.errors and frm.ayanamsa.value == "KP"
+    assert DashaForm.parse({"ayanamsa": ["LAHIRI"]}).ayanamsa.value == "LAHIRI"
+    rp = ResolvedPerson(frm.birth.to_person())
+    chart = rp.chart(frm.ayanamsa)
+    mds, _ = D.mahadashas(chart.moon.longitude, rp.time.utc)
+    now = int(datetime(2026, 10, 7, tzinfo=timezone.utc).timestamp() * 1000)
+    html = views.dasha_result(Settings(), frm, "Trichy", chart, rp.dasha(frm.ayanamsa), mds,
+                              int(rp.time.utc.timestamp() * 1000), 330, now, ui=lang)
+    assert 'id="dasha-data"' in html and 'id="dasha-x"' in html and html.count('<tr class="now">') == 1
+    assert t(lang, "all_md") in html and 'data-carry-to="/horoscope"' in html and "Ravi" in html
+    data = json.loads(html.split('<script type="application/json" id="dasha-data">')[1].split("</script>")[0])
+    assert len(data["mds"]) == 9 and data["offsetMin"] == 330 and len(data["labels"]["levels"]) == 5
+    assert "<title>" in html and "Ravi" not in html[html.index("<title>"):html.index("</title>")]

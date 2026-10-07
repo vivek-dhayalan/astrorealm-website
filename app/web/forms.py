@@ -192,6 +192,19 @@ class HoroscopeForm:
 
 
 @dataclass
+class DashaForm:
+    birth: BirthInput = field(default_factory=BirthInput)
+    ayanamsa: Ayanamsa = Ayanamsa.KP  # KP by default on the dasha page
+    errors: dict[str, str] = field(default_factory=dict)
+
+    @classmethod
+    def parse(cls, f: dict) -> "DashaForm":
+        frm = cls(birth=_birth(f), ayanamsa=_ayanamsa(f) if _one(f, "ayanamsa", 10) else Ayanamsa.KP)
+        frm.birth.validate("", frm.errors)
+        return frm
+
+
+@dataclass
 class MatchForm:
     bride: BirthInput = field(default_factory=lambda: BirthInput(sex="F"))
     groom: BirthInput = field(default_factory=lambda: BirthInput(sex="M"))
