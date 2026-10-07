@@ -57,7 +57,7 @@ RT = {
     "col_english": ("English", "ஆங்கிலம்", "अंग्रेज़ी"),
     "col_element": ("Element", "தத்துவம்", "तत्व"),
     "col_naks": ("Nakshatras", "நட்சத்திரங்கள்", "नक्षत्र"),
-    "naks_title": ("27 Nakshatras List – Lord, Rasi, Gana, Nadi & Rajju of Each Birth Star",
+    "naks_title": ("27 Nakshatras – Lord, Rasi, Gana, Nadi & Rajju of Each Star",
                    "27 நட்சத்திரங்கள் – அதிபதி, ராசி, கணம், நாடி, ரஜ்ஜு",
                    "27 नक्षत्रों की सूची – स्वामी, राशि, गण, नाड़ी और रज्जु"),
     "naks_desc": ("All 27 nakshatras with their Tamil and Hindi names, ruling planet, rasi, gana, nadi and rajju, and "
@@ -131,11 +131,11 @@ RT = {
     "cta_full": ("Full Matching", "முழுப் பொருத்தம் பார்க்க", "पूरा मिलान देखें"),
     "cta_table": ("Porutham Table", "பொருத்த அட்டவணை", "मिलान तालिका"),
     "all_naks": ("All nakshatras", "அனைத்து நட்சத்திரங்கள்", "सभी नक्षत्र"),
-    "nak_title": ("{name} Nakshatra ({ta}) – Lord, Rasi & Marriage Matching",
+    "nak_title": ("{name} Nakshatra – Lord, Rasi & Marriage Matching",
                   "{name} நட்சத்திரம் – அதிபதி, ராசி, கணம், திருமணப் பொருத்தம்",
                   "{name} नक्षत्र – स्वामी, राशि, गण और विवाह मिलान"),
     "nak_desc": ("{name} nakshatra ({ta}): ruled by {lord}, in {rasis} rasi, {gana} gana, {nadi} nadi, {rajju} rajju — "
-                 "and its best and worst marriage matches by Porutham.",
+                 "plus its best and worst Porutham matches.",
                  "{name} நட்சத்திரம்: அதிபதி {lord}, {rasis} ராசி, {gana} கணம், {nadi} நாடி, {rajju} ரஜ்ஜு — பொருத்த "
                  "முறைப்படி சிறந்த, தவிர்க்க வேண்டிய நட்சத்திரங்கள்.",
                  "{name} नक्षत्र: स्वामी {lord}, {rasis} राशि, {gana} गण, {nadi} नाड़ी, {rajju} रज्जु — पोरुथम के "
@@ -210,11 +210,11 @@ RT = {
                 "<strong>राशि अधिपति</strong> — {lord} की तुलना साथी की राशि के स्वामी से होती है: एक ही ग्रह या "
                 "परस्पर मित्र हों तो मिलान, किसी भी ओर शत्रुता हो तो नहीं, बाकी आंशिक।"),
     "all_rasis": ("All rasis", "அனைத்து ராசிகள்", "सभी राशियाँ"),
-    "rasi_title": ("{name} Rasi ({english}) – Lord, Nakshatras and Marriage Matching",
+    "rasi_title": ("{name} Rasi ({english}) – Lord, Nakshatras & Matching",
                    "{name} ராசி ({english}) – அதிபதி, நட்சத்திரங்கள், திருமணப் பொருத்தம்",
                    "{name} राशि ({english}) – स्वामी, नक्षत्र और विवाह मिलान"),
-    "rasi_desc": ("{name} rasi ({english}, {ta}): ruled by {lord}, {element} sign, with {naks} — and how it works in "
-                  "Porutham and Guna Milan matching.",
+    "rasi_desc": ("{name} rasi ({english}, {ta}): ruled by {lord}, {element} sign, with {naks} — and its role in "
+                  "Porutham and Guna Milan.",
                   "{name} ராசி: அதிபதி {lord}, {element} தத்துவம், நட்சத்திரங்கள் {naks} — பொருத்தம், அஷ்டகூடத்தில் "
                   "இதன் பங்கு.",
                   "{name} राशि: स्वामी {lord}, {element} तत्व, नक्षत्र {naks} — पोरुथम और गुण मिलान में इसका उपयोग।"),
@@ -262,11 +262,11 @@ RT = {
              "பல கணக்குகள் மணமகளின் நட்சத்திரத்திலிருந்து மணமகனின் நட்சத்திரம் வரை எண்ணப்படுவதால் அட்டவணை "
              "சமச்சீராக இருக்காது.",
              "तालिका सममित नहीं है, क्योंकि कई जाँचें वधू के नक्षत्र से वर के नक्षत्र तक गिनी जाती हैं।"),
-    "tbl_title": ("Nakshatra Porutham Table (27×27) – Marriage Matching Chart by Birth Star",
+    "tbl_title": ("Nakshatra Porutham Table (27×27) – Matching by Birth Star",
                   "நட்சத்திரப் பொருத்த அட்டவணை (27×27) – திருமணப் பொருத்தம்",
                   "नक्षत्र मिलान तालिका (27×27) – जन्म नक्षत्र से विवाह मिलान"),
-    "tbl_desc": ("Thirumana porutham chart for all 27 × 27 birth stars: how many of the 12 poruthams match for each "
-                 "bride's and groom's nakshatra, and which pairs are Uttamam, Madhyamam or rejected.",
+    "tbl_desc": ("Porutham chart for all 27 × 27 birth stars: how many of the 12 poruthams match for each bride–groom "
+                 "nakshatra pair, and which pairs are rejected.",
                  "27 × 27 நட்சத்திரங்களுக்கும் திருமணப் பொருத்த அட்டவணை: ஒவ்வொரு மணமகள், மணமகன் நட்சத்திர ஜோடிக்கும் "
                  "12-இல் எத்தனை பொருத்தம், உத்தமம், மத்திமம் அல்லது நிராகரிப்பு.",
                  "सभी 27 × 27 जन्म नक्षत्रों के लिए पोरुथम तालिका: हर वधू और वर नक्षत्र के लिए 12 में से कितने पोरुथम "

@@ -68,7 +68,7 @@ the lagna sits very close to a boundary, and it matters a great deal in KP astro
 a fraction of a degree. If you are taking the chart to an astrologer, choose the ayanamsa they use. Every
 AstroRealm printout states which ayanamsa it used, with its exact value.</p>
 """,
-        'Ayanamsa Explained: Lahiri vs KP (Krishnamurti) – Which Should You Use?',
+        'Ayanamsa Explained: Lahiri vs KP – Which Should You Use?',
         'What ayanamsa is, why Indian (sidereal) charts differ from Western ones by about 24°, and how Lahiri and KP ayanamsa differ.',
     ),
     Article(
@@ -178,7 +178,7 @@ used by the astrologer we validated against:</p>
 not matched) and <em>lenient</em> (partial counts as matched). Traditions differ on the exact counts for Dina,
 Stree Deergha and Rasi; the rules this site uses are published in its <a href="/credits">source code</a>.</p>
 """,
-        '10 Porutham (Thirumana Porutham) Explained: Rajju, Vedha, Dina and More',
+        '10 Porutham (Thirumana Porutham) Explained – Rajju, Vedha',
         'South Indian marriage matching: what each of the 10 (and 12) poruthams checks, including Rajju and Vedha, and how the result is graded.',
     ),
     Article(
@@ -283,7 +283,7 @@ Ashwini and Jyeshtha or Rohini and Swati. Each <a href="/learn/nakshatras">naksh
 <p>Star-level tables are a quick first look. A full match also needs the rasi and pada, which depend on the exact
 birth time — <a href="/match">check the full matching</a> with both sets of birth details.</p>
 """,
-        "Rajju Porutham and Nadi Dosha Explained – Star Lists and Exceptions",
+        "Rajju Porutham & Nadi Dosha – Star Lists and Exceptions",
         "Which nakshatras fall in each Rajju (Siro, Kantha, Nabhi, Kati, Pada) and Nadi (Adi, Madhya, Antya), "
         "what a clash means, and when Nadi dosha is excused.",
     ),

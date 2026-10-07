@@ -83,19 +83,8 @@ _T: dict[str, tuple[str, str, str]] = {
 
     # home
     # Page copy speaks to quality; "free" is kept for page titles and search descriptions only (PAGE_META)
-    "home_h1": ("Your horoscope and marriage matching, the traditional way",
-                "பாரம்பரிய முறையில் ஜாதகமும் திருமணப் பொருத்தமும்",
-                "पारंपरिक पद्धति से कुंडली और कुंडली मिलान"),
-    "home_intro": (
-        "South Indian Rasi and Navamsa charts calculated with the Swiss Ephemeris, and matching by Porutham and "
-        "Ashtakoota — checked against an astrologer's own results. Your horoscope comes as a neatly formatted page in "
-        "English, தமிழ், తెలుగు, മലയാളം, ಕನ್ನಡ or हिन्दी, and nothing you enter is ever stored.",
-        "Swiss Ephemeris கணக்கீட்டில் தென்னிந்திய முறை ராசி, நவாம்சக் கட்டங்கள்; 10 பொருத்தம் (வர்ணம், நாடி "
-        "சேர்த்து 12), அஷ்டகூடம் (36 புள்ளிகள்) — ஜோதிடரின் கணிப்புகளுடன் சரிபார்க்கப்பட்டவை. உங்கள் ஜாதகம் "
-        "தமிழிலேயே நேர்த்தியான வடிவில் கிடைக்கும்; நீங்கள் உள்ளிடும் விவரங்கள் எதுவும் சேமிக்கப்படுவதில்லை.",
-        "Swiss Ephemeris की सटीक गणना से दक्षिण भारतीय शैली के राशि और नवांश चार्ट, और अष्टकूट गुण मिलान (36 गुण) "
-        "व 12 पोरुथम जाँच — ज्योतिषी के परिणामों से मिलाकर परखी गई। आपकी कुंडली हिंदी में सुव्यवस्थित, सुंदर रूप "
-        "में मिलती है, और आपकी दी हुई कोई भी जानकारी सहेजी नहीं जाती।"),
+    "home_h1": ("Horoscope, marriage matching and dasha — the traditional way", "பாரம்பரிய முறையில் ஜாதகம், திருமணப் பொருத்தம், தசை புக்தி", "पारंपरिक पद्धति से कुंडली, कुंडली मिलान और दशा"),
+    "home_intro": ("South Indian Rasi and Navamsa charts calculated with the Swiss Ephemeris, and matching by Porutham and Ashtakoota — checked against an astrologer's own results. Also Chevvai/Manglik dosham under South and North Indian rules, and Vimshottari dasha down to prana. Your horoscope comes as a neatly formatted page in English, தமிழ், తెలుగు, മലയാളം, ಕನ್ನಡ or हिन्दी, and nothing you enter is ever stored.", "Swiss Ephemeris கணக்கீட்டில் தென்னிந்திய முறை ராசி, நவாம்சக் கட்டங்கள்; 10 பொருத்தம் (வர்ணம், நாடி சேர்த்து 12), அஷ்டகூடம் (36 புள்ளிகள்) — ஜோதிடரின் கணிப்புகளுடன் சரிபார்க்கப்பட்டவை. தென்–வட இந்திய முறைகளில் செவ்வாய் தோஷமும், பிராணம் வரை விம்சோத்தரி தசையும் உண்டு. உங்கள் ஜாதகம் தமிழிலேயே நேர்த்தியான வடிவில் கிடைக்கும்; நீங்கள் உள்ளிடும் விவரங்கள் எதுவும் சேமிக்கப்படுவதில்லை.", "Swiss Ephemeris की सटीक गणना से दक्षिण भारतीय शैली के राशि और नवांश चार्ट, और अष्टकूट गुण मिलान (36 गुण) व 12 पोरुथम जाँच — ज्योतिषी के परिणामों से मिलाकर परखी गई। साथ ही दक्षिण व उत्तर भारतीय नियमों से मांगलिक दोष, और प्राण स्तर तक विंशोत्तरी दशा। आपकी कुंडली हिंदी में सुव्यवस्थित, सुंदर रूप में मिलती है, और आपकी दी हुई कोई भी जानकारी सहेजी नहीं जाती।"),
     "card_h": ("Horoscope", "ஜாதகம் கணிக்க", "कुंडली बनाएँ"),
     "card_h_desc": ("Rasi and Navamsa charts with your family and personal details, laid out as an elegant "
                     "horoscope you can print or share.",
@@ -183,6 +172,36 @@ _T: dict[str, tuple[str, str, str]] = {
         "राशि और नवांश चार्ट, पारिवारिक व व्यक्तिगत विवरण और दोष — प्रिंट के लिए सुव्यवस्थित। आपके भरे विवरण साथ "
         "चले जाएँगे।"),
     "cta_h_btn": ("Create Horoscope →", "ஜாதகம் உருவாக்கு →", "कुंडली बनाएँ →"),
+    "hl_h": ("Simple Tools, Built for Privacy",
+        "எளிய கருவிகள், உங்கள் தனியுரிமைக்கு முன்னுரிமை",
+        "आसान टूल, आपकी निजता सबसे पहले"),
+    "hl_easy_t": ("Easy to Use",
+        "எளிதாகப் பயன்படுத்தலாம்",
+        "इस्तेमाल में आसान"),
+    "hl_easy": ("Enter the birth details and get the result in seconds — no sign-up, no app to install.",
+        "பிறப்பு விவரங்களை உள்ளிட்டால் சில நொடிகளில் முடிவு — பதிவு தேவையில்லை, செயலி நிறுவத் தேவையில்லை.",
+        "जन्म विवरण भरें और कुछ ही पलों में परिणाम पाएँ — न साइन-अप, न कोई ऐप इंस्टॉल।"),
+    "hl_private_t": ("Private by Design",
+        "தனியுரிமை முதன்மை",
+        "निजता सबसे पहले"),
+    "hl_private": ("Nothing you enter is stored — no accounts, no database. Names and birth details are used only to draw your page.",
+        "நீங்கள் உள்ளிடுவது எதுவும் சேமிக்கப்படுவதில்லை — கணக்கு இல்லை, தரவுத்தளம் இல்லை. பெயரும் பிறப்பு விவரங்களும் உங்கள் பக்கத்தை உருவாக்க மட்டுமே பயன்படும்.",
+        "आपकी दी हुई कोई जानकारी सहेजी नहीं जाती — न खाता, न डेटाबेस। नाम और जन्म विवरण केवल आपका पृष्ठ बनाने में उपयोग होते हैं।"),
+    "hl_lang_t": ("In Your Language",
+        "உங்கள் மொழியில்",
+        "आपकी भाषा में"),
+    "hl_lang": ("Tamil, Telugu, Malayalam, Kannada, Hindi and English — on screen and on the printout.",
+        "தமிழ், தெலுங்கு, மலையாளம், கன்னடம், இந்தி, ஆங்கிலம் — திரையிலும் அச்சிலும்.",
+        "हिंदी, तमिल, तेलुगु, मलयालम, कन्नड़ और अंग्रेज़ी — स्क्रीन पर भी, प्रिंट में भी।"),
+    "hl_acc_t": ("Carefully Calculated",
+        "துல்லியமான கணிப்பு",
+        "सटीक गणना"),
+    "hl_acc": ("Swiss Ephemeris positions with Lahiri or KP ayanamsa; charts and matching checked against an astrologer's results.",
+        "Swiss Ephemeris கிரக நிலைகள், லாகிரி அல்லது KP அயனாம்சம்; கட்டங்களும் பொருத்தமும் ஜோதிடரின் கணிப்புகளுடன் சரிபார்க்கப்பட்டவை.",
+        "Swiss Ephemeris से ग्रह स्थिति, लाहिड़ी या KP अयनांश; चार्ट और मिलान ज्योतिषी के परिणामों से परखे गए।"),
+    "form_private": ("Private: nothing you enter is saved, and no account is needed.",
+        "தனியுரிமை: நீங்கள் உள்ளிடுவது எதுவும் சேமிக்கப்படாது; கணக்கு தேவையில்லை.",
+        "निजी: आपकी भरी जानकारी सहेजी नहीं जाती, और खाते की ज़रूरत नहीं।"),
     "card_d": ("Vimshottari Dasha", "விம்சோத்தரி தசை", "विंशोत्तरी दशा"),
     "card_d_desc": ("Every dasha period from birth — mahadasha down to prana — with dates, time left and the "
                     "running period marked.",
@@ -284,43 +303,23 @@ def keys() -> list[str]:
 
 # ------------------------------------------------------------------ page titles and descriptions: key → {lang: (title, desc)}
 PAGE_META = {
-    "home": {
-        "en": ("Free Horoscope & Marriage Matching Online – Porutham, Guna Milan | {site}",
-               "Make a free horoscope (jathagam) with Rasi and Navamsa charts, and check marriage matching with "
-               "10/12 Porutham and 36-guna Ashtakoota. Print in English, Tamil, Telugu, Malayalam, Kannada or Hindi."),
-        "ta": ("இலவச ஜாதகம் & திருமணப் பொருத்தம் ஆன்லைன் – 10 பொருத்தம் | {site}",
-               "இலவசமாக ஜாதகம் கணிக்கவும் — ராசி, நவாம்சக் கட்டங்கள், குடும்ப விவரங்களுடன் தமிழில் அச்சிடலாம். "
-               "10 பொருத்தம், நட்சத்திரப் பொருத்தம், அஷ்டகூடப் பொருத்தம் பார்க்கவும்."),
-        "hi": ("मुफ़्त कुंडली और कुंडली मिलान ऑनलाइन – 36 गुण मिलान | {site}",
-               "मुफ़्त जन्म कुंडली बनाएँ — राशि और नवांश चार्ट के साथ, हिंदी में प्रिंट करें। विवाह के लिए अष्टकूट "
-               "गुण मिलान (36 गुण) और दक्षिण भारतीय पोरुथम मिलान।"),
-    },
-    "horoscope": {
-        "en": ("Free Jathagam / Horoscope Online – Rasi & Navamsa Chart | {site}",
-               "Generate a free South Indian horoscope (jathagam) with Rasi and Navamsa charts, family details and "
-               "optional KP tables. Lahiri or KP ayanamsa. A beautifully formatted, printable horoscope in six languages."),
-        "ta": ("இலவச ஜாதகம் ஆன்லைன் – ராசி, நவாம்சக் கட்டம் | {site}",
-               "இலவசமாகத் தென்னிந்திய ஜாதகம் கணிக்கவும்: ராசி, நவாம்சக் கட்டங்கள், குடும்ப விவரங்கள், விருப்பமான "
-               "KP அட்டவணைகள். லாகிரி அல்லது KP அயனாம்சம். தமிழில் நேர்த்தியான, அச்சிடக்கூடிய ஜாதகம்."),
-        "hi": ("मुफ़्त जन्म कुंडली ऑनलाइन – राशि और नवांश चार्ट | {site}",
-               "मुफ़्त दक्षिण भारतीय जन्म कुंडली बनाएँ: राशि और नवांश चार्ट, परिवार का विवरण और वैकल्पिक KP "
-               "तालिकाएँ। लाहिड़ी या KP अयनांश। हिंदी में सुव्यवस्थित, प्रिंट करने योग्य कुंडली।"),
-    },
+    "home": {"en": ("Free Horoscope, Porutham Matching & Dasha | {site}", "Free jathagam with Rasi–Navamsa charts, Porutham and 36-guna matching, Chevvai dosham and Vimshottari dasha. No sign-up; nothing you enter is stored."), "ta": ("இலவச ஜாதகம், திருமணப் பொருத்தம், தசை புக்தி | {site}", "இலவச ஜாதகம் — ராசி, நவாம்சக் கட்டங்கள்; 10 பொருத்தம், 36 குண அஷ்டகூடம், செவ்வாய் தோஷம், விம்சோத்தரி தசை. பதிவு தேவையில்லை; எதுவும் சேமிக்கப்படாது."), "hi": ("मुफ़्त कुंडली, कुंडली मिलान और दशा | {site}", "मुफ़्त जन्म कुंडली — राशि और नवांश चार्ट; 36 गुण मिलान और पोरुथम, मांगलिक दोष जाँच और विंशोत्तरी दशा। न साइन-अप, न कोई जानकारी सहेजी जाती।")},
+    "horoscope": {"en": ("Free Jathagam / Horoscope Online – Rasi & Navamsa Chart | {site}", "Free jathagam with Rasi and Navamsa charts, Vimshottari dasha, Chevvai dosham and optional KP tables, neatly formatted to print in six languages."), "ta": ("இலவச ஜாதகம் ஆன்லைன் – ராசி, நவாம்சக் கட்டம் | {site}", "இலவசமாகத் தென்னிந்திய ஜாதகம்: ராசி, நவாம்சக் கட்டங்கள், விம்சோத்தரி தசை, செவ்வாய் தோஷம், விருப்பமான KP அட்டவணைகள் — தமிழில் நேர்த்தியாக அச்சிடலாம்."), "hi": ("मुफ़्त जन्म कुंडली ऑनलाइन – राशि और नवांश चार्ट | {site}", "मुफ़्त दक्षिण भारतीय जन्म कुंडली: राशि और नवांश चार्ट, विंशोत्तरी दशा, मांगलिक दोष और वैकल्पिक KP तालिकाएँ — हिंदी में सुव्यवस्थित, प्रिंट योग्य।")},
     "match": {
-        "en": ("Marriage Matching by Birth Details – 10 Porutham & 36 Guna Milan | {site}",
-               "Free horoscope matching for marriage: Thirumana Porutham (10/12 poruthams, Rajju, Nadi, Vedha) and "
-               "Ashtakoota Guna Milan out of 36, Chevvai/Manglik dosham and Rahu–Ketu, with both Rasi charts side by side."),
+        "en": ("Marriage Matching – 10 Porutham & 36 Guna Milan Online | {site}",
+               "Free marriage matching: 10/12 Porutham (Rajju, Nadi, Vedha), 36-guna Ashtakoota, Chevvai/Manglik "
+               "dosham and Rahu–Ketu, with both Rasi charts side by side."),
         "ta": ("திருமணப் பொருத்தம் ஆன்லைன் – 10 பொருத்தம், ரஜ்ஜு, நாடி | {site}",
-               "மணமகள், மணமகன் பிறப்பு விவரங்களைக் கொண்டு இலவசத் திருமணப் பொருத்தம்: 12 பொருத்தங்கள் (ரஜ்ஜு, "
-               "நாடி, வேதை உட்பட), 36-க்கு அஷ்டகூட மதிப்பெண், செவ்வாய் தோஷம், ராகு–கேது, இருவரின் ராசிக் கட்டங்கள்."),
+               "இலவசத் திருமணப் பொருத்தம்: 12 பொருத்தங்கள் (ரஜ்ஜு, நாடி, வேதை உட்பட), 36-க்கு அஷ்டகூட மதிப்பெண், "
+               "செவ்வாய் தோஷம், ராகு–கேது, இருவரின் ராசிக் கட்டங்கள்."),
         "hi": ("कुंडली मिलान ऑनलाइन – 36 गुण मिलान और पोरुथम | {site}",
                "वर और वधू के जन्म विवरण से मुफ़्त कुंडली मिलान: अष्टकूट के 36 में से गुण, नाड़ी, भकूट और गण दोष, "
                "12 पोरुथम, मांगलिक दोष, राहु–केतु और दोनों के राशि चार्ट।"),
     },
     "learn": {
-        "en": ("Learn Vedic Astrology: Porutham, Guna Milan, Nakshatras & Rasis | {site}",
-               "Plain-language guides to horoscope charts and marriage matching: ayanamsa, Rasi and Navamsa, Porutham, "
-               "Ashtakoota, Rajju and Nadi, KP astrology, the 27 nakshatras and the 12 rasis."),
+        "en": ("Learn Vedic Astrology: Porutham, Guna Milan & Nakshatras | {site}",
+               "Plain-language guides to Rasi and Navamsa charts, ayanamsa, Porutham, Ashtakoota, Rajju and Nadi, "
+               "KP astrology, the 27 nakshatras and 12 rasis."),
         "ta": ("ஜோதிடம் கற்க: பொருத்தம், அஷ்டகூடம், நட்சத்திரங்கள், ராசிகள் | {site}",
                "ஜாதகக் கட்டங்கள், திருமணப் பொருத்தம் பற்றிய எளிய விளக்கங்கள்: அயனாம்சம், ராசி–நவாம்சம், 10 "
                "பொருத்தம், அஷ்டகூடம், ரஜ்ஜு–நாடி, KP, 27 நட்சத்திரங்கள், 12 ராசிகள்."),

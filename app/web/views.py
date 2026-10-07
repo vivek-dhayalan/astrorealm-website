@@ -46,7 +46,7 @@ def analytics_tags(measurement_id: str) -> str:
 
 
 TURNSTILE_JS = '<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>'
-STATIC_VERSION = "21"
+STATIC_VERSION = "22"
 
 
 def esc(v) -> str:
@@ -63,6 +63,9 @@ ARTICLES_BY_LANG = {"en": ARTICLES, "ta": learn_ta.ARTICLES, "hi": learn_hi.ARTI
 
 def site_lang(lang: str | None) -> str:
     return lang if lang in SITE_LANGS else "en"
+
+
+TITLE_MAX = 62
 
 
 def meta(s: Settings, key: str, lang: str = "en") -> dict:
@@ -202,6 +205,11 @@ def layout(s: Settings, title: str, body: str, *, active: str = "", map_page: bo
     page_title: the full <title>; default "<title> · <site name>"."""
     lang = site_lang(lang)
     full_title = page_title or f"{title} · {s.site_name}"
+    # search results show about 60 characters: drop the " | AstroRealm" suffix when the title is already long,
+    # so the words people search for stay visible
+    brand = f" | {s.site_name}"
+    if full_title.endswith(brand) and len(full_title) > TITLE_MAX:
+        full_title = full_title[: -len(brand)]
     alternates = {code: lpath(code, path) for code in SITE_LANGS} if path is not None else None
     switch = lang_switch(lang, path) if path is not None else ""
     ads_on = ads and s.ads_enabled
@@ -427,9 +435,20 @@ def home(s: Settings, lang: str = "en") -> str:
     cards = "".join(f'<a class="card" href="{href}"><h2>{esc(T(lang, k))}</h2><p>{esc(T(lang, k + "_desc"))}</p></a>'
                     for href, k in (("/horoscope", "card_h"), ("/match", "card_m"), ("/dasha", "card_d"),
                                     ("/learn/nakshatra-porutham-table", "card_table"), ("/learn", "card_learn")))
+    icons = {  # simple line icons, coloured by the theme
+        "easy": '<path d="M13 2 4 14h7l-1 8 9-12h-7z"/>',
+        "private": '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
+        "lang": '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/>',
+        "acc": '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5"/>',
+    }
+    hl = "".join(f'<li class="hl hl-{k}"><svg viewBox="0 0 24 24" aria-hidden="true">{icons[k]}</svg>'
+                 f'<div><h3>{esc(T(lang, "hl_" + k + "_t"))}</h3><p>{esc(T(lang, "hl_" + k))}</p></div></li>'
+                 for k in ("easy", "private", "lang", "acc"))
     body = f"""<section class="hero"><h1>{esc(T(lang, "home_h1"))}</h1>
 <p>{esc(T(lang, "home_intro"))}</p></section>
 <div class="cards">{cards}</div>
+<section class="highlights" aria-labelledby="hl-h"><h2 id="hl-h">{esc(T(lang, "hl_h"))}</h2><ul>{hl}</ul>
+<p class="small"><a href="/privacy">{esc(T(lang, "foot_privacy"))} →</a></p></section>
 <h2><a href="/learn/nakshatras">{esc(T(lang, "stars_h"))}</a></h2>
 <p>{esc(T(lang, "stars_intro"))}</p>
 <ol class="star-list">{stars}</ol>
@@ -438,7 +457,16 @@ def home(s: Settings, lang: str = "en") -> str:
     m = meta(s, "home", lang)
     ld = [{"@context": "https://schema.org", "@type": "WebSite", "name": s.site_name, "url": abs_url(s, lpath(lang, "/")),
            "description": m["description"], "inLanguage": lang},
-          {"@context": "https://schema.org", **org_ld(s)}]
+          {"@context": "https://schema.org", **org_ld(s)},
+          # the three free tools, so search engines see what the site offers
+          {"@context": "https://schema.org", "@type": "ItemList", "name": T(lang, "home_h1"),
+           "itemListElement": [{"@type": "ListItem", "position": n + 1,
+                                "item": {k: v for k, v in app_ld(s, lpath(lang, path), T(lang, card),
+                                                                 meta(s, key, lang)["description"]).items()
+                                         if k != "@context"}}
+                               for n, (path, card, key) in enumerate((("/horoscope", "card_h", "horoscope"),
+                                                                      ("/match", "card_m", "match"),
+                                                                      ("/dasha", "card_d", "dasha")))]}]
     return layout(s, T(lang, "home_h1"), body, active="", path="/", lang=lang, ld=ld, **m)
 
 
@@ -525,7 +553,7 @@ def _horoscope_form(s: Settings, frm: HoroscopeForm, message, candidates, ui: st
 </div>
 </fieldset>
 {turnstile_widget(s)}
-<p><button type="submit" class="primary">{L("Generate Horoscope")}</button></p>
+<p class="submit-row"><button type="submit" class="primary">{L("Generate Horoscope")}</button><span class="private-note"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>{esc(T(ui, "form_private"))} <a href="/privacy">{esc(T(ui, "foot_privacy"))}</a></span></p>
 </form>"""
     m = meta(s, "horoscope", ui)
     return layout(s, T(ui, "nav_horoscope"), body, active="horoscope", map_page=True, turnstile=True,
@@ -555,7 +583,7 @@ def _match_form(s: Settings, frm: MatchForm, message, candidates, ui: str) -> st
 </div>
 <fieldset><legend>{L("Options")}</legend>{common_options(frm.lang, frm.ayanamsa.value, e, frm.lang2)}</fieldset>
 {turnstile_widget(s)}
-<p><button type="submit" class="primary">{L("Check Matching")}</button></p>
+<p class="submit-row"><button type="submit" class="primary">{L("Check Matching")}</button><span class="private-note"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>{esc(T(ui, "form_private"))} <a href="/privacy">{esc(T(ui, "foot_privacy"))}</a></span></p>
 </form>"""
     m = meta(s, "match", ui)
     return layout(s, T(ui, "nav_match"), body, active="match", map_page=True, turnstile=True, path="/match",
@@ -732,7 +760,7 @@ def dasha_form(s: Settings, frm: DashaForm, message: str | None = None, candidat
 {ayan}
 </fieldset>
 {turnstile_widget(s)}
-<p><button type="submit" class="primary">{L("Calculate Dasha")}</button></p>
+<p class="submit-row"><button type="submit" class="primary">{L("Calculate Dasha")}</button><span class="private-note"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>{esc(T(ui, "form_private"))} <a href="/privacy">{esc(T(ui, "foot_privacy"))}</a></span></p>
 </form>"""
     finally:
         _FORM_LANG.reset(token)

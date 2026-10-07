@@ -399,3 +399,19 @@ a.button.primary { background: var(--accent); border-color: var(--accent); color
 .dx-levels .dx-table td, .dx-levels .dx-table th { padding: 5px 6px; }
 .dx-levels .dx-dot { margin-left: 4px; }
 @media (max-width: 1060px) { .dx-levels { grid-template-columns: minmax(0, 1fr); } }
+
+/* home highlights; privacy note by the submit buttons */
+.highlights { margin: 28px 0 8px; }
+.highlights h2 { font-size: 1.25rem; margin: 0 0 12px; }
+.highlights ul { list-style: none; padding: 0; margin: 0; display: grid; gap: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+.hl { display: flex; gap: 12px; align-items: flex-start; padding: 14px; border: 1px solid var(--line);
+  border-radius: var(--radius); background: var(--paper); }
+.hl svg { flex: none; width: 28px; height: 28px; fill: none; stroke: var(--accent); stroke-width: 1.8;
+  stroke-linecap: round; stroke-linejoin: round; }
+.hl h3 { margin: 0 0 4px; font-size: 1rem; }
+.hl p { margin: 0; color: var(--muted); font-size: .92rem; }
+.hl-private { border-color: var(--accent); }
+.submit-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; }
+.private-note { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: .9rem; }
+.private-note svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; flex: none; }
