@@ -550,3 +550,15 @@ def test_dasha_page(lang):
     data = json.loads(html.split('<script type="application/json" id="dasha-data">')[1].split("</script>")[0])
     assert len(data["mds"]) == 9 and data["offsetMin"] == 330 and len(data["labels"]["levels"]) == 5
     assert "<title>" in html and "Ravi" not in html[html.index("<title>"):html.index("</title>")]
+
+
+def test_brand_icons_and_share_image():
+    page = views.home(Settings(base_url="https://astrorealm.in"))
+    assert '<meta property="og:image" content="https://astrorealm.in/static/brand/og-image.jpg?v=' in page
+    assert 'summary_large_image' in page and 'rel="apple-touch-icon"' in page and 'favicon.svg' in page
+    assert '"logo":"https://astrorealm.in/static/brand/icon-512.png"' in page
+    from pathlib import Path
+    brand = Path(views.__file__).parent / "static" / "brand"
+    for f in ("favicon.ico", "favicon.svg", "apple-touch-icon.png", "icon-192.png", "icon-512.png", "og-image.jpg",
+              "site.webmanifest", "logo.svg"):
+        assert (brand / f).stat().st_size > 0, f

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import time
+from pathlib import Path
 
 from fastapi import APIRouter, Query, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
@@ -271,6 +272,12 @@ def ads_txt():
         return HTMLResponse("", status_code=404, media_type="text/plain")
     pub = client.removeprefix("ca-")
     return HTMLResponse(f"google.com, {pub}, DIRECT, f08c47fec0942fa0\n", media_type="text/plain")
+
+
+@router.get("/favicon.ico", include_in_schema=False)
+def favicon() -> Response:
+    data = (Path(__file__).parent / "static" / "brand" / "favicon.ico").read_bytes()
+    return Response(data, media_type="image/x-icon", headers={"Cache-Control": "public, max-age=604800"})
 
 
 @router.get("/robots.txt", response_class=HTMLResponse)

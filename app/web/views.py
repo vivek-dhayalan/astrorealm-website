@@ -46,7 +46,7 @@ def analytics_tags(measurement_id: str) -> str:
 
 
 TURNSTILE_JS = '<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>'
-STATIC_VERSION = "22"
+STATIC_VERSION = "24"
 
 
 def esc(v) -> str:
@@ -133,8 +133,20 @@ def jsonld(data) -> str:
     return f'<script type="application/ld+json">{text}</script>'
 
 
+BRAND = "/static/brand"
+OG_IMAGE_PATH = f"{BRAND}/og-image.jpg"
+
+
+def og_image(s: Settings) -> str:
+    """Share image: OG_IMAGE_URL if set, else the bundled one (needs BASE_URL for an absolute address)."""
+    return s.og_image_url or (abs_url(s, OG_IMAGE_PATH) + f"?v={STATIC_VERSION}" if s.base_url else "")
+
+
 def org_ld(s: Settings) -> dict:
-    return {"@type": "Organization", "name": s.site_name, "url": abs_url(s, "/")}
+    out = {"@type": "Organization", "name": s.site_name, "url": abs_url(s, "/")}
+    if s.base_url:
+        out["logo"] = abs_url(s, f"{BRAND}/icon-512.png")
+    return out
 
 
 def breadcrumb_ld(s: Settings, trail: list[tuple[str, str]]) -> dict:
@@ -177,9 +189,12 @@ def seo_head(s: Settings, full_title: str, description: str, path: str | None, l
         for code in (alternates or {}):
             if code != lang:
                 out.append(f'<meta property="og:locale:alternate" content="{OG_LOCALE.get(code, "en_IN")}">')
-        if s.og_image_url:
-            out.append(f'<meta property="og:image" content="{esc(s.og_image_url)}">')
-        out.append(f'<meta name="twitter:card" content="{"summary_large_image" if s.og_image_url else "summary"}">')
+        img = og_image(s)
+        if img:
+            out += [f'<meta property="og:image" content="{esc(img)}">',
+                    '<meta property="og:image:width" content="1200">', '<meta property="og:image:height" content="630">',
+                    f'<meta property="og:image:alt" content="{esc(s.site_name)}">']
+        out.append(f'<meta name="twitter:card" content="{"summary_large_image" if img else "summary"}">')
     for item in ld or []:
         out.append(jsonld(item))
     return "\n".join(out)
@@ -252,11 +267,14 @@ def layout(s: Settings, title: str, body: str, *, active: str = "", map_page: bo
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="{FONTS_URL}">
 <link rel="stylesheet" href="/static/site.css?v={STATIC_VERSION}">
+<link rel="icon" href="{BRAND}/favicon.ico?v={STATIC_VERSION}" sizes="any"><link rel="icon" href="{BRAND}/favicon.svg?v={STATIC_VERSION}" type="image/svg+xml">
+<link rel="apple-touch-icon" href="{BRAND}/apple-touch-icon.png?v={STATIC_VERSION}"><link rel="manifest" href="{BRAND}/site.webmanifest">
+<meta name="theme-color" content="#0b0d13">
 {''.join(head_extra)}
 </head>
 <body data-map-style="{esc(s.map_style_url)}" data-t-near="{esc(ft(lang, "Near"))}" data-t-pinned="{esc(ft(lang, "Pinned location"))}">
 <a class="skip" href="#main">{T(lang, "skip")}</a>
-<header class="site-head no-print"><a class="brand" href="/">{esc(s.site_name)}</a><nav>{nav}</nav>
+<header class="site-head no-print"><a class="brand" href="/"><img src="{BRAND}/favicon.svg?v={STATIC_VERSION}" alt="" width="28" height="28">{esc(s.site_name)}</a><nav>{nav}</nav>
 <div class="head-tools">{switch}{theme_menu(lang)}</div></header>
 {top}
 <div class="page{' with-side' if side else ''}">
