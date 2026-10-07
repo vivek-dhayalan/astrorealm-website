@@ -374,7 +374,7 @@ def test_forms_are_in_the_page_language():
             assert legends, lang
             if lang != "en":
                 assert not any(re.fullmatch(r"[A-Za-z ]+", x) for x in legends), (lang, legends)
-                assert "Generate horoscope" not in form and "Check matching" not in form, lang
+                assert "Generate Horoscope" not in form and "Check Matching" not in form, lang
 
 
 def test_ui_strings_complete():

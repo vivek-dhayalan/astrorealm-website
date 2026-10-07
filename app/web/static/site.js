@@ -237,29 +237,42 @@
     })(doc.body.firstChild);
     return doc.body.firstChild.innerHTML;
   }
-  document.addEventListener("click", function (e) {
-    var a = e.target.closest(".lang-menu a[hreflang]"), form = formOnPage();
-    if (!a || !form) return;
+  function saveDraft(form, kind) {
     var fields = [];
     Array.prototype.forEach.call(form.elements, function (el) {
       if (!el.name || SKIP[el.name] || el.type === "submit" || el.type === "button") return;
       if (el.type === "checkbox" || el.type === "radio") fields.push([el.name, el.value, el.checked]);
       else fields.push([el.name, el.value]);
     });
-    var area = form.querySelector(".rte-area");
+    var area = form.querySelector(".rte-area"), ui = form.querySelector('input[name="ui"]');
     try {
-      var ui = form.querySelector('input[name="ui"]');
-      sessionStorage.setItem(DRAFT, JSON.stringify({ action: form.getAttribute("action"), at: Date.now(),
-        fields: fields, rte: area ? area.innerHTML : "", from: ui ? ui.value : "" }));
+      sessionStorage.setItem(DRAFT, JSON.stringify({ action: form.getAttribute("action"), at: Date.now(), kind: kind,
+        fields: fields, rte: area ? area.innerHTML : "", from: kind === "back" ? "" : (ui ? ui.value : "") }));
     } catch (err) {}
+  }
+  document.addEventListener("click", function (e) {
+    var a = e.target.closest(".lang-menu a[hreflang]"), form = formOnPage();
+    if (a && form) saveDraft(form, "lang");
+  });
+  // "Edit Details" goes back in history; browsers don't refill fields such as the place search box
+  // (autocomplete is off there), so the submitted form is kept the same way and refilled on the way back.
+  var submitted = formOnPage();
+  if (submitted) submitted.addEventListener("submit", function () { saveDraft(submitted, "back"); });
+  window.addEventListener("pageshow", function (e) {
+    if (e.persisted) { try { sessionStorage.removeItem(DRAFT); } catch (err) {} }  // page came back intact
   });
   (function restoreDraft() {
     var raw = null, form = formOnPage();
+    if (!form) return;  // e.g. the result page: keep the draft for the way back
     try { raw = sessionStorage.getItem(DRAFT); sessionStorage.removeItem(DRAFT); } catch (err) { return; }
-    if (!raw || !form) return;
+    if (!raw) return;
     var d;
     try { d = JSON.parse(raw); } catch (err) { return; }
-    if (!d || d.action !== form.getAttribute("action") || Date.now() - d.at > 10 * 60 * 1000) return;
+    if (!d || d.action !== form.getAttribute("action") || Date.now() - d.at > 30 * 60 * 1000) return;
+    if (d.kind === "back") {  // only when coming back to this form, not when opening it afresh
+      var nav = performance.getEntriesByType && performance.getEntriesByType("navigation")[0];
+      if (!nav || nav.type !== "back_forward") return;
+    }
     // output languages left at the old page's default follow the new page's language instead
     var picked = d.fields.filter(function (f) { return f[0] === "lang" && f[2]; }).map(function (f) { return f[1]; });
     var keepLangs = !(picked.length === 1 && picked[0] === d.from);
@@ -277,6 +290,10 @@
       if (ta) ta.value = area.innerHTML;
     }
     form.querySelectorAll(".checks[data-max]").forEach(function (g) { g.dispatchEvent(new Event("change")); });
+    form.querySelectorAll(".place-field").forEach(function (f) {
+      var lat = f.querySelector('input[name$="lat"]'), lon = f.querySelector('input[name$="lon"]'), c = f.querySelector(".coords");
+      if (c && lat && lat.value) c.textContent = lat.value + ", " + lon.value;
+    });
   })();
   // ---------------------------------------------------------------- take birth details to another form page
   // Links marked data-carry-to (horoscope ⇄ dasha) hand the details over the same way as a language switch:

@@ -77,7 +77,7 @@ _T: dict[str, tuple[str, str, str]] = {
     "home": ("Home", "முகப்பு", "मुखपृष्ठ"),
     "language": ("Language", "மொழி", "भाषा"),
     "theme": ("Theme", "தோற்றம்", "थीम"),
-    "theme_auto": ("Device setting", "சாதன அமைப்பு", "डिवाइस के अनुसार"),
+    "theme_auto": ("Device Setting", "சாதன அமைப்பு", "डिवाइस के अनुसार"),
     "theme_light": ("Light", "வெளிர்", "हल्का"),
     "theme_dark": ("Dark", "இருள்", "गहरा"),
 
@@ -103,13 +103,13 @@ _T: dict[str, tuple[str, str, str]] = {
                     "நேர்த்தியாக வடிவமைக்கப்பட்ட ஜாதகம்.",
                     "राशि और नवांश चार्ट, परिवार और व्यक्तिगत विवरण के साथ — सुंदर ढंग से सजी कुंडली, जिसे आप प्रिंट "
                     "या साझा कर सकते हैं।"),
-    "card_m": ("Marriage matching", "திருமணப் பொருத்தம்", "कुंडली मिलान"),
+    "card_m": ("Marriage Matching", "திருமணப் பொருத்தம்", "कुंडली मिलान"),
     "card_m_desc": ("Ashtakoota (36 gunas) and Porutham for a bride and groom, with both Rasi charts.",
                     "மணமகள், மணமகன் இருவரின் பிறப்பு விவரங்களைக் கொண்டு 12 பொருத்தங்களும் அஷ்டகூட மதிப்பெண்ணும், "
                     "இருவரின் ராசிக் கட்டங்களுடன்.",
                     "वर और वधू के जन्म विवरण से 36 में से गुण, नाड़ी, भकूट और गण दोष, 12 पोरुथम और दोनों के राशि "
                     "चार्ट।"),
-    "card_table": ("Nakshatra porutham table", "நட்சத்திரப் பொருத்த அட்டவணை", "नक्षत्र मिलान तालिका"),
+    "card_table": ("Nakshatra Porutham Table", "நட்சத்திரப் பொருத்த அட்டவணை", "नक्षत्र मिलान तालिका"),
     "card_table_desc": ("Every bride's star against every groom's star — how many poruthams match, and which pairs "
                         "are rejected.",
                         "27 நட்சத்திரங்களுக்கும் — எத்தனை பொருத்தம், எந்த ஜோடிகள் பொருந்தாது.",
@@ -173,7 +173,7 @@ _T: dict[str, tuple[str, str, str]] = {
         "நீங்கள் உள்ளிட்ட விவரங்கள் அப்படியே எடுத்துச் செல்லப்படும்.",
         "इस जन्म की हर महादशा, अंतर्दशा, प्रत्यंतर, सूक्ष्म और प्राण — चालू अवधि चिह्नित। आपके भरे विवरण साथ चले "
         "जाएँगे।"),
-    "cta_dasha_btn": ("Open the dasha calculator →", "தசை கணிப்புக்குச் செல் →", "दशा कैलकुलेटर खोलें →"),
+    "cta_dasha_btn": ("Calculate Dasha →", "தசை கணிப்புக்குச் செல் →", "दशा कैलकुलेटर खोलें →"),
     "cta_h_q": ("Looking for the full horoscope?", "முழு ஜாதகம் வேண்டுமா?", "पूरी कुंडली चाहिए?"),
     "cta_h_text": (
         "Rasi and Navamsa charts, family and personal details and doshas, neatly formatted to print. "
@@ -182,8 +182,8 @@ _T: dict[str, tuple[str, str, str]] = {
         "உள்ளிட்ட விவரங்கள் அப்படியே எடுத்துச் செல்லப்படும்.",
         "राशि और नवांश चार्ट, पारिवारिक व व्यक्तिगत विवरण और दोष — प्रिंट के लिए सुव्यवस्थित। आपके भरे विवरण साथ "
         "चले जाएँगे।"),
-    "cta_h_btn": ("Create the horoscope →", "ஜாதகம் உருவாக்கு →", "कुंडली बनाएँ →"),
-    "card_d": ("Vimshottari dasha", "விம்சோத்தரி தசை", "विंशोत्तरी दशा"),
+    "cta_h_btn": ("Create Horoscope →", "ஜாதகம் உருவாக்கு →", "कुंडली बनाएँ →"),
+    "card_d": ("Vimshottari Dasha", "விம்சோத்தரி தசை", "विंशोत्तरी दशा"),
     "card_d_desc": ("Every dasha period from birth — mahadasha down to prana — with dates, time left and the "
                     "running period marked.",
                     "பிறப்பு முதல் எல்லாத் தசைக் காலங்களும் — மகா தசை முதல் பிராணம் வரை — தேதிகள், மீதமுள்ள காலம், "
@@ -191,8 +191,8 @@ _T: dict[str, tuple[str, str, str]] = {
                     "जन्म से हर दशा अवधि — महादशा से प्राण तक — तिथियों, शेष समय और चालू अवधि के साथ।"),
     "res_m": ("Matching result", "பொருத்த முடிவு", "मिलान परिणाम"),
     "print": ("Print", "அச்சிடு", "प्रिंट करें"),
-    "edit": ("Edit details", "விவரங்களைத் திருத்த", "विवरण बदलें"),
-    "again": ("Start again", "புதிதாகத் தொடங்க", "फिर से शुरू करें"),
+    "edit": ("Edit Details", "விவரங்களைத் திருத்த", "विवरण बदलें"),
+    "again": ("Start Again", "புதிதாகத் தொடங்க", "फिर से शुरू करें"),
     "print_hint": ("Print on A5 paper with default margins and “Background graphics” on.",
                    "A5 தாளில், இயல்புநிலை ஓரங்களுடன், “Background graphics” இயக்கி அச்சிடவும்.",
                    "A5 कागज़ पर, सामान्य मार्जिन और “Background graphics” चालू रखकर प्रिंट करें।"),
@@ -214,8 +214,8 @@ _T: dict[str, tuple[str, str, str]] = {
                        "ஒவ்வொரு ராசியின் அதிபதி, தத்துவம், நட்சத்திரங்கள், பொருத்த விதிகள்.",
                        "हर चंद्र राशि का स्वामी, तत्व, नक्षत्र और मिलान के नियम।"),
     "more_guides": ("More guides", "மேலும் விளக்கங்கள்", "और लेख"),
-    "cta_h": ("Make a horoscope", "ஜாதகம் கணிக்க", "कुंडली बनाएँ"),
-    "cta_m": ("Check matching", "பொருத்தம் பார்க்க", "मिलान देखें"),
+    "cta_h": ("Create Horoscope", "ஜாதகம் கணிக்க", "कुंडली बनाएँ"),
+    "cta_m": ("Check Matching", "பொருத்தம் பார்க்க", "मिलान देखें"),
     "guidance": ("For guidance only. Please consult an astrologer before taking decisions.",
                  "இது வழிகாட்டுதலுக்கு மட்டுமே. முடிவெடுக்கும் முன் ஜோதிடரை அணுகவும்.",
                  "यह केवल मार्गदर्शन के लिए है। निर्णय लेने से पहले ज्योतिषी से सलाह लें।"),
@@ -478,7 +478,7 @@ CREDIT_USES = {
                                                 "स्थानों के नाम, निर्देशांक और समय क्षेत्र"),
     "Map data": ("வரைபடத் தரவு", "मानचित्र डेटा"),
     "Interactive map": ("ஊடாடும் வரைபடம்", "इंटरैक्टिव मानचित्र"),
-    "Map tiles for “Pick on map”": ("“வரைபடத்தில் தேர்வு” வசதிக்கான வரைபடப் படங்கள்", "“मानचित्र पर चुनें” के लिए मानचित्र टाइलें"),
+    "Map tiles for “Use Map”": ("“வரைபடத்தில் தேர்வு” வசதிக்கான வரைபடப் படங்கள்", "“मानचित्र पर चुनें” के लिए मानचित्र टाइलें"),
     "Web framework": ("வலை நிரல் கட்டமைப்பு", "वेब फ़्रेमवर्क"),
     "Web toolkit under FastAPI": ("FastAPI-இன் அடிப்படைக் கருவித்தொகுப்பு", "FastAPI के नीचे का वेब टूलकिट"),
     "Data validation": ("தரவுச் சரிபார்ப்பு", "डेटा सत्यापन"),

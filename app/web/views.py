@@ -46,7 +46,7 @@ def analytics_tags(measurement_id: str) -> str:
 
 
 TURNSTILE_JS = '<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>'
-STATIC_VERSION = "20"
+STATIC_VERSION = "21"
 
 
 def esc(v) -> str:
@@ -334,7 +334,7 @@ def tip(key: str) -> str:
     return (f'<span class="tip"><button type="button" class="tip-btn" aria-expanded="false" aria-controls="{tid}" '
             f'aria-label="{esc(title)}" data-action="tip">i</button>'
             f'<span class="tip-box" id="{tid}" role="note"><b>{esc(title)}</b> {esc(text)} '
-            + (f'<a href="{href}" target="_blank" rel="noopener">{esc(L("Learn more"))}</a>' if href else "")
+            + (f'<a href="{href}" target="_blank" rel="noopener">{esc(L("Learn More"))}</a>' if href else "")
             + '</span></span>')
 
 
@@ -365,7 +365,7 @@ def place_field(prefix: str, b: BirthInput, errors: dict) -> str:
 <ul class="suggest" id="{key}-list" role="listbox" hidden></ul>
 </div>
 <input type="hidden" name="{prefix}lat" value="{lat}"><input type="hidden" name="{prefix}lon" value="{lon}">
-<p class="hint"><button type="button" class="linkish" data-action="map">{esc(L("Pick on map"))}</button>
+<p class="hint"><button type="button" class="linkish" data-action="map">{esc(L("Use Map"))}</button>
 <span class="coords">{esc(coords)}</span></p>
 <div class="map" hidden></div>
 {_err(errors, key)}
@@ -525,7 +525,7 @@ def _horoscope_form(s: Settings, frm: HoroscopeForm, message, candidates, ui: st
 </div>
 </fieldset>
 {turnstile_widget(s)}
-<p><button type="submit" class="primary">{L("Generate horoscope")}</button></p>
+<p><button type="submit" class="primary">{L("Generate Horoscope")}</button></p>
 </form>"""
     m = meta(s, "horoscope", ui)
     return layout(s, T(ui, "nav_horoscope"), body, active="horoscope", map_page=True, turnstile=True,
@@ -555,7 +555,7 @@ def _match_form(s: Settings, frm: MatchForm, message, candidates, ui: str) -> st
 </div>
 <fieldset><legend>{L("Options")}</legend>{common_options(frm.lang, frm.ayanamsa.value, e, frm.lang2)}</fieldset>
 {turnstile_widget(s)}
-<p><button type="submit" class="primary">{L("Check matching")}</button></p>
+<p><button type="submit" class="primary">{L("Check Matching")}</button></p>
 </form>"""
     m = meta(s, "match", ui)
     return layout(s, T(ui, "nav_match"), body, active="match", map_page=True, turnstile=True, path="/match",
@@ -638,8 +638,8 @@ def carry_link(to: str, text: str, birth: BirthInput | None = None, ayanamsa: st
 def cta(ui: str, to: str, birth: BirthInput | None = None, ayanamsa: str = "") -> str:
     """'Looking for …? … [Open …]' box that takes the birth details along to the other page."""
     k = "cta_dasha" if to == "/dasha" else "cta_h"
-    return (f'<aside class="cta no-print"><p><b>{esc(T(ui, k + "_q"))}</b> {esc(T(ui, k + "_text"))}</p>'
-            f'{carry_link(to, T(ui, k + "_btn"), birth, ayanamsa, cls="button")}</aside>')
+    return (f'<aside class="xcta no-print"><p><b>{esc(T(ui, k + "_q"))}</b> {esc(T(ui, k + "_text"))}</p>'
+            f'{carry_link(to, T(ui, k + "_btn"), birth, ayanamsa, cls="button primary")}</aside>')
 
 
 def horoscope_result(s: Settings, frm: HoroscopeForm, place_label: str, chart, svgs: dict[str, str],
@@ -732,7 +732,7 @@ def dasha_form(s: Settings, frm: DashaForm, message: str | None = None, candidat
 {ayan}
 </fieldset>
 {turnstile_widget(s)}
-<p><button type="submit" class="primary">{L("Calculate dasha")}</button></p>
+<p><button type="submit" class="primary">{L("Calculate Dasha")}</button></p>
 </form>"""
     finally:
         _FORM_LANG.reset(token)
@@ -1080,7 +1080,7 @@ CREDITS = [
     ("OpenStreetMap", "https://www.openstreetmap.org/copyright", "ODbL", "Map data"),
     ("MapLibre GL JS", "https://maplibre.org/", "BSD-3-Clause", "Interactive map"),
     ("OpenFreeMap", "https://openfreemap.org/", "Free service; map data © OpenStreetMap contributors (ODbL)",
-     "Map tiles for “Pick on map”"),
+     "Map tiles for “Use Map”"),
     ("FastAPI", "https://fastapi.tiangolo.com/", "MIT", "Web framework"),
     ("Starlette", "https://www.starlette.io/", "BSD-3-Clause", "Web toolkit under FastAPI"),
     ("Pydantic", "https://docs.pydantic.dev/", "MIT", "Data validation"),
@@ -1159,7 +1159,7 @@ _PRIVACY = {
              "कौन-सा डिवाइस)। यह आपकी कुंडली या मिलान परिणाम वाले पृष्ठों पर नहीं चलता। {link} से बाहर हो सकते हैं।"),
     "ga_optout": ("Google's opt-out add-on", "Google-இன் விலகல் நீட்சி", "Google के ऑप्ट-आउट ऐड-ऑन"),
     "t_fonts": ("<b>Google Fonts</b> and <b>unpkg</b> serve fonts and the map library; <b>OpenFreeMap</b> serves the map "
-                "images when you use “Pick on map”.",
+                "images when you use “Use Map”.",
                 "<b>Google Fonts</b>, <b>unpkg</b> எழுத்துருக்களையும் வரைபட நிரலகத்தையும் வழங்குகின்றன; “வரைபடத்தில் "
                 "தேர்வு” பயன்படுத்தும்போது <b>OpenFreeMap</b> வரைபடப் படங்களை வழங்குகிறது.",
                 "<b>Google Fonts</b> और <b>unpkg</b> फ़ॉन्ट और मानचित्र लाइब्रेरी देते हैं; “मानचित्र पर चुनें” इस्तेमाल "
@@ -1175,14 +1175,15 @@ _PRIVACY = {
                 "எதுவும் சேமிக்கப்படாததால் நீக்க வேண்டியதும் எதுவுமில்லை. பக்கத்தை அச்சிடுவதும் சேமிப்பதும் உங்கள் "
                 "விருப்பம்.",
                 "कुछ भी सहेजा नहीं जाता, इसलिए हटाने को कुछ नहीं है। पृष्ठ प्रिंट करना या सहेजना आपकी मर्ज़ी है।"),
-    "remember": (" Your language and theme choices are remembered in your own browser only. If you switch language "
-                 "while filling a form, what you typed is carried to the new page within the same browser tab and "
-                 "deleted as soon as it is filled back in.",
-                 " நீங்கள் தேர்ந்தெடுக்கும் மொழியும் தோற்றமும் உங்கள் உலாவியில் மட்டுமே நினைவில் வைக்கப்படுகின்றன. படிவத்தை "
-                 "நிரப்பும்போது மொழியை மாற்றினால், நீங்கள் உள்ளிட்டவை அதே உலாவித் தாவலில் புதிய பக்கத்துக்குக் கொண்டு "
-                 "செல்லப்பட்டு, மீண்டும் நிரப்பப்பட்டவுடன் நீக்கப்படும்.",
-                 " आपकी चुनी हुई भाषा और थीम केवल आपके अपने ब्राउज़र में याद रखी जाती हैं। फ़ॉर्म भरते समय भाषा बदलने पर "
-                 "आपका भरा हुआ विवरण उसी ब्राउज़र टैब में नए पृष्ठ पर ले जाया जाता है और वापस भरते ही हटा दिया जाता है।"),
+    "remember": (" Your language and theme choices are remembered in your own browser only. If you switch language, "
+                 "go back to edit your details, or move between the horoscope and dasha pages, what you typed is "
+                 "carried over within the same browser tab and deleted as soon as it is filled back in.",
+                 " நீங்கள் தேர்ந்தெடுக்கும் மொழியும் தோற்றமும் உங்கள் உலாவியில் மட்டுமே நினைவில் வைக்கப்படுகின்றன. மொழியை "
+                 "மாற்றும்போதும், விவரங்களைத் திருத்தத் திரும்பும்போதும், ஜாதக–தசைப் பக்கங்களுக்கு இடையே செல்லும்போதும், "
+                 "நீங்கள் உள்ளிட்டவை அதே உலாவித் தாவலில் கொண்டு செல்லப்பட்டு, மீண்டும் நிரப்பப்பட்டவுடன் நீக்கப்படும்.",
+                 " आपकी चुनी हुई भाषा और थीम केवल आपके अपने ब्राउज़र में याद रखी जाती हैं। भाषा बदलने, विवरण "
+                 "बदलने के लिए वापस जाने या कुंडली और दशा पृष्ठों के बीच जाने पर आपका भरा हुआ विवरण उसी ब्राउज़र टैब में "
+                 "साथ ले जाया जाता है और वापस भरते ही हटा दिया जाता है।"),
     "write": ("Write to {email}.", "தொடர்புக்கு: {email}.", "संपर्क: {email}।"),
 }
 
