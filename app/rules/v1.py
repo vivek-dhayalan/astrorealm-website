@@ -200,3 +200,109 @@ KP_BAD_HOUSES = {1, 6, 10}
 KP_SENSITIVITY_MINUTES = 5
 # HOUSE_SIGNIFICATORS matches the astrologer's software (AstroWonder); FOUR_LEVEL is the textbook union
 KP_SIGNIFICATION_METHOD = "HOUSE_SIGNIFICATORS"
+
+# ------------------------------------------------------------ baby naming: pada syllables
+# Starting syllable (nama akshara) for each nakshatra pada, Moon's nakshatra. Each pada lists its syllables, the
+# first being the most common; later ones are variants used by other traditions (all are shown).
+# Sources cross-checked: onlinejyotish.com, dekhopanchang.com (see docs/naming). Latin, Devanagari, Tamil.
+PADA_SYLLABLES = [
+    [["Chu"], ["Che"], ["Cho"], ["La"]],
+    [["Li"], ["Lu"], ["Le"], ["Lo"]],
+    [["A"], ["I"], ["U"], ["E"]],
+    [["O"], ["Va"], ["Vi"], ["Vu"]],
+    [["Ve"], ["Vo"], ["Ka"], ["Ki"]],
+    [["Ku"], ["Gha"], ["Nga"], ["Chha", "Na"]],
+    [["Ke"], ["Ko"], ["Ha"], ["Hi"]],
+    [["Hu"], ["He"], ["Ho"], ["Da"]],
+    [["Di"], ["Du"], ["De"], ["Do"]],
+    [["Ma"], ["Mi"], ["Mu"], ["Me"]],
+    [["Mo"], ["Ta"], ["Ti"], ["Tu"]],
+    [["Te"], ["To"], ["Pa"], ["Pi"]],
+    [["Pu"], ["Sha"], ["Na"], ["Tha"]],
+    [["Pe"], ["Po"], ["Ra"], ["Ri"]],
+    [["Ru"], ["Re"], ["Ro"], ["Ta"]],
+    [["Ti"], ["Tu"], ["Te"], ["To"]],
+    [["Na"], ["Ni"], ["Nu"], ["Ne"]],
+    [["No"], ["Ya"], ["Yi"], ["Yu"]],
+    [["Ye"], ["Yo"], ["Bha"], ["Bhi"]],
+    [["Bhu"], ["Dha"], ["Pha"], ["Dha", "Da"]],
+    [["Bhe"], ["Bho"], ["Ja"], ["Ji"]],
+    [["Ju", "Khi"], ["Je", "Khu"], ["Jo", "Khe"], ["Kha", "Gha", "Kho"]],
+    [["Ga"], ["Gi"], ["Gu"], ["Ge"]],
+    [["Go"], ["Sa"], ["Si"], ["Su"]],
+    [["Se"], ["So"], ["Da"], ["Di"]],
+    [["Du"], ["Tha"], ["Jha"], ["Na", "Jna"]],
+    [["De"], ["Do"], ["Cha"], ["Chi"]],
+]
+PADA_DEVANAGARI = [
+    [["चू"], ["चे"], ["चो"], ["ला"]],
+    [["ली"], ["लू"], ["ले"], ["लो"]],
+    [["अ"], ["ई"], ["उ"], ["ए"]],
+    [["ओ"], ["वा"], ["वी"], ["वु"]],
+    [["वे"], ["वो"], ["का"], ["की"]],
+    [["कु"], ["घ"], ["ङ"], ["छ", "न"]],
+    [["के"], ["को"], ["हा"], ["ही"]],
+    [["हु"], ["हे"], ["हो"], ["डा"]],
+    [["डी"], ["डू"], ["डे"], ["डो"]],
+    [["मा"], ["मी"], ["मू"], ["मे"]],
+    [["मो"], ["टा"], ["टी"], ["टू"]],
+    [["टे"], ["टो"], ["पा"], ["पी"]],
+    [["पू"], ["ष"], ["ण"], ["ठ"]],
+    [["पे"], ["पो"], ["रा"], ["री"]],
+    [["रू"], ["रे"], ["रो"], ["ता"]],
+    [["ती"], ["तू"], ["ते"], ["तो"]],
+    [["ना"], ["नी"], ["नू"], ["ने"]],
+    [["नो"], ["या"], ["यी"], ["यू"]],
+    [["ये"], ["यो"], ["भा"], ["भी"]],
+    [["भू"], ["धा"], ["फा"], ["ढा", "दा"]],
+    [["भे"], ["भो"], ["जा"], ["जी"]],
+    [["जू", "खी"], ["जे", "खू"], ["जो", "खे"], ["खा", "घा", "खो"]],
+    [["गा"], ["गी"], ["गू"], ["गे"]],
+    [["गो"], ["सा"], ["सी"], ["सू"]],
+    [["से"], ["सो"], ["दा"], ["दी"]],
+    [["दू"], ["थ"], ["झ"], ["ञ", "ना"]],
+    [["दे"], ["दो"], ["चा"], ["ची"]],
+]
+# Common Tamil equivalents. PENDING astrologer review: Tamil tables in circulation differ in a few cells.
+PADA_TAMIL = [
+    [["சு"], ["சே"], ["சோ"], ["லா"]],
+    [["லி"], ["லு"], ["லே"], ["லோ"]],
+    [["அ"], ["இ"], ["உ"], ["ஏ"]],
+    [["ஒ"], ["வ"], ["வி"], ["வு"]],
+    [["வே"], ["வோ"], ["க"], ["கி"]],
+    [["கு"], ["க"], ["ங"], ["ச", "ந"]],
+    [["கே"], ["கோ"], ["ஹ"], ["ஹி"]],
+    [["ஹு"], ["ஹே"], ["ஹோ"], ["ட"]],
+    [["டி"], ["டு"], ["டே"], ["டோ"]],
+    [["ம"], ["மி"], ["மு"], ["மே"]],
+    [["மோ"], ["ட"], ["டி"], ["டு"]],
+    [["டே"], ["டோ"], ["ப"], ["பி"]],
+    [["பு"], ["ஷ"], ["ண"], ["ட"]],
+    [["பே"], ["போ"], ["ர"], ["ரி"]],
+    [["ரு"], ["ரே"], ["ரோ"], ["த"]],
+    [["தி"], ["து"], ["தே"], ["தோ"]],
+    [["ந"], ["நி"], ["நு"], ["நே"]],
+    [["நோ"], ["ய"], ["யி"], ["யு"]],
+    [["யே"], ["யோ"], ["ப"], ["பி"]],
+    [["பு"], ["த"], ["ப"], ["ட", "த"]],
+    [["பே"], ["போ"], ["ஜ"], ["ஜி"]],
+    [["ஜு", "கி"], ["ஜே", "கு"], ["ஜோ", "கே"], ["க", "க", "கோ"]],
+    [["க"], ["கி"], ["கு"], ["கே"]],
+    [["கோ"], ["ஸ"], ["ஸி"], ["ஸு"]],
+    [["ஸே"], ["ஸோ"], ["த"], ["தி"]],
+    [["து"], ["த"], ["ஜ"], ["ஞ", "ந"]],
+    [["தே"], ["தோ"], ["ச"], ["சி"]],
+]
+NAMING_BOUNDARY_WARN_MIN = 30   # warn when the pada changes within this many minutes of the birth time
+
+# ------------------------------------------------------------ baby naming: numerology
+# Chaldean values as popularised by Cheiro (no letter is 9). Pythagorean: alphabetical 1–9 (L. Dow Balliett).
+CHALDEAN = {**dict.fromkeys("AIJQY", 1), **dict.fromkeys("BKR", 2), **dict.fromkeys("CGLS", 3),
+            **dict.fromkeys("DMT", 4), **dict.fromkeys("EHNX", 5), **dict.fromkeys("UVW", 6),
+            **dict.fromkeys("OZ", 7), **dict.fromkeys("FP", 8)}
+PYTHAGOREAN = {c: i % 9 + 1 for i, c in enumerate("ABCDEFGHIJKLMNOPQRSTUVWXYZ")}
+MASTER_NUMBERS = (11, 22, 33)   # kept unreduced in the Pythagorean expression number
+NUMBER_PLANET = {1: "Sun", 2: "Moon", 3: "Jupiter", 4: "Rahu", 5: "Mercury", 6: "Venus", 7: "Ketu", 8: "Saturn",
+                 9: "Mars"}
+# Rahu acts like Saturn and Ketu like Mars ("Shanivat Rahu, Kujavat Ketu") for planetary friendship
+NODE_PROXY = {"Rahu": "Saturn", "Ketu": "Mars"}

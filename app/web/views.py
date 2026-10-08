@@ -16,7 +16,8 @@ from ..core.reference import NAKSHATRAS, RASHIS, VIMSHOTTARI
 from ..render import i18n
 from . import learn_hi, learn_kn, learn_ml, learn_ta, learn_te
 from .learn import ARTICLES, MODIFIED, PUBLISHED, Article
-from .forms import CHART_PARTS, BirthInput, DashaForm, HoroscopeForm, MatchForm
+from .forms import CHART_PARTS, BirthInput, DashaForm, HoroscopeForm, MatchForm, NamingForm
+from .naming_text import nt
 from .settings import Settings
 from .strings import LANG_NAMES, LANGS, t
 from .form_text import TIPS as FORM_TIPS, ft
@@ -46,7 +47,7 @@ def analytics_tags(measurement_id: str) -> str:
 
 
 TURNSTILE_JS = '<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>'
-STATIC_VERSION = "24"
+STATIC_VERSION = "27"
 
 
 def esc(v) -> str:
@@ -244,6 +245,7 @@ def layout(s: Settings, title: str, body: str, *, active: str = "", map_page: bo
         f'<a href="{href}"{cur if key == active else ""}>{label}</a>'
         for key, href, label in (("horoscope", "/horoscope", T(lang, "nav_horoscope")),
                                  ("match", "/match", T(lang, "nav_match")), ("dasha", "/dasha", T(lang, "nav_dasha")),
+                                 ("names", "/baby-names", T(lang, "nav_names")),
                                  ("learn", "/learn", T(lang, "nav_learn")),
                                  ("credits", "/credits", T(lang, "nav_credits"))))
     consent = ""
@@ -398,10 +400,11 @@ def place_field(prefix: str, b: BirthInput, errors: dict) -> str:
 </div>"""
 
 
-def birth_fields(prefix: str, b: BirthInput, errors: dict, *, with_sex: bool) -> str:
+def birth_fields(prefix: str, b: BirthInput, errors: dict, *, with_sex: bool, with_name: bool = True) -> str:
     sex = select_field(prefix + "sex", "Sex", b.sex, [("F", "Female"), ("M", "Male")], errors, True,
                        blank="Choose") if with_sex else ""
-    return (text_field(prefix + "name", "Name", b.name, errors, required=True, maxlength=80)
+    name = text_field(prefix + "name", "Name", b.name, errors, required=True, maxlength=80) if with_name else ""
+    return (name
             + sex
             + '<div class="row2">'
             + text_field(prefix + "dob", "Date of birth", b.dob, errors, type_="date", required=True, maxlength=10)
@@ -452,7 +455,8 @@ def home(s: Settings, lang: str = "en") -> str:
                     for i in range(12))
     cards = "".join(f'<a class="card" href="{href}"><h2>{esc(T(lang, k))}</h2><p>{esc(T(lang, k + "_desc"))}</p></a>'
                     for href, k in (("/horoscope", "card_h"), ("/match", "card_m"), ("/dasha", "card_d"),
-                                    ("/learn/nakshatra-porutham-table", "card_table"), ("/learn", "card_learn")))
+                                    ("/baby-names", "card_n"), ("/learn/nakshatra-porutham-table", "card_table"),
+                                    ("/learn", "card_learn")))
     icons = {  # simple line icons, coloured by the theme
         "easy": '<path d="M13 2 4 14h7l-1 8 9-12h-7z"/>',
         "private": '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
@@ -484,7 +488,8 @@ def home(s: Settings, lang: str = "en") -> str:
                                          if k != "@context"}}
                                for n, (path, card, key) in enumerate((("/horoscope", "card_h", "horoscope"),
                                                                       ("/match", "card_m", "match"),
-                                                                      ("/dasha", "card_d", "dasha")))]}]
+                                                                      ("/dasha", "card_d", "dasha"),
+                                                                      ("/baby-names", "card_n", "names")))]}]
     return layout(s, T(lang, "home_h1"), body, active="", path="/", lang=lang, ld=ld, **m)
 
 
@@ -668,9 +673,11 @@ def toolbar(back: str, ui: str = "en", extra: str = "", a5_hint: bool = True) ->
 CARRY_FIELDS = ("name", "sex", "dob", "tob", "place", "lat", "lon", "ayanamsa")
 
 
-def carry_link(to: str, text: str, birth: BirthInput | None = None, ayanamsa: str = "", cls: str = "") -> str:
+def carry_link(to: str, text: str, birth: BirthInput | None = None, ayanamsa: str = "", cls: str = "",
+               submit: bool = False) -> str:
     """Link to another form page that takes the birth details along (site.js hands them over in sessionStorage
-    for this tab only — never in the URL). Without `birth`, the fields are read from the form on the page."""
+    for this tab only — never in the URL). Without `birth`, the fields are read from the form on the page.
+    submit: the other page sends its form straight away once filled (it opens on the result)."""
     data = ""
     if birth is not None:
         vals = {"name": birth.name, "sex": birth.sex, "dob": birth.dob, "tob": birth.tob, "place": birth.place,
@@ -678,12 +685,13 @@ def carry_link(to: str, text: str, birth: BirthInput | None = None, ayanamsa: st
                 "ayanamsa": ayanamsa}
         data = f' data-carry="{esc(json.dumps(vals, ensure_ascii=False))}"'
     c = f' class="{cls}"' if cls else ""
-    return f'<a href="{to}"{c} data-carry-to="{to}"{data}>{esc(text)}</a>'
+    sub = ' data-carry-submit="1"' if submit else ""
+    return f'<a href="{to}"{c} data-carry-to="{to}"{data}{sub}>{esc(text)}</a>'
 
 
 def cta(ui: str, to: str, birth: BirthInput | None = None, ayanamsa: str = "") -> str:
     """'Looking for …? … [Open …]' box that takes the birth details along to the other page."""
-    k = "cta_dasha" if to == "/dasha" else "cta_h"
+    k = {"/dasha": "cta_dasha", "/baby-names": "cta_n"}.get(to, "cta_h")
     return (f'<aside class="xcta no-print"><p><b>{esc(T(ui, k + "_q"))}</b> {esc(T(ui, k + "_text"))}</p>'
             f'{carry_link(to, T(ui, k + "_btn"), birth, ayanamsa, cls="button primary")}</aside>')
 
@@ -697,7 +705,8 @@ def horoscope_result(s: Settings, frm: HoroscopeForm, place_label: str, chart, s
                      for lg in frm.langs if lg in by_lang)
     pt = print_title(s, [frm.birth.name], t(frm.lang, "horoscope"))
     to_dasha = carry_link("/dasha", T(ui, "cta_dasha_btn"), frm.birth, frm.ayanamsa.value)
-    body = (toolbar("/horoscope", ui, to_dasha)
+    to_names = carry_link("/baby-names", T(ui, "cta_n_btn"), frm.birth, frm.ayanamsa.value, submit=True)
+    body = (toolbar("/horoscope", ui, to_dasha + to_names)
             + f'<div class="sheets" lang="{frm.lang}" data-print-title="{esc(pt)}">{blocks}</div>')
     # generic title: names must not reach browser history, tab sync or any third-party script
     return layout(s, T(ui, "res_h"), body, active="horoscope", side_ad=False, ads=False, lang=ui)
@@ -834,6 +843,7 @@ def dasha_result(s: Settings, frm: DashaForm, place_label: str, chart, d: dict, 
     first = (f'<table class="grid dx-table"><thead><tr><th>{esc(cols[0])}</th><th>{esc(cols[1])}</th><th>{esc(cols[2])}</th>'
              f'<th class="num">{esc(cols[3])}</th></tr></thead><tbody>{"".join(rows)}</tbody></table>')
     to_h = carry_link("/horoscope", T(lang, "cta_h_btn"), b, frm.ayanamsa.value)
+    to_h += carry_link("/baby-names", T(lang, "cta_n_btn"), b, frm.ayanamsa.value, submit=True)
     body = (toolbar("/dasha", lang, to_h, a5_hint=False) + f"""<div class="dasha-page">
 <h1>{esc(T(lang, "dform_h1"))}</h1>
 <div class="dx-top"><section class="dx-card">{birth}</section><section class="dx-card">{summary}</section></div>
@@ -848,6 +858,160 @@ def dasha_result(s: Settings, frm: DashaForm, place_label: str, chart, d: dict, 
 </div>
 <script type="application/json" id="dasha-data">{payload}</script>""")
     return layout(s, T(lang, "res_d"), body, active="dasha", side_ad=False, ads=False, lang=lang)
+
+
+# ------------------------------------------------------------------ baby names
+# One page: the birth-details form and the birth star side by side, then the starting letters and the numbers, then the
+# name checker. naming.js fills the parts in as soon as the details are complete (POST /baby-names/part); the form
+# still submits normally without JavaScript and gives the same page, filled in.
+def _naming_form_block(s: Settings, frm: NamingForm, ui: str, message: str | None = None,
+                       candidates: list[dict] | None = None) -> str:
+    token = _FORM_LANG.set(ui)
+    try:
+        e = frm.errors
+        ayan = select_field("ayanamsa", "Ayanamsa", frm.ayanamsa.value,
+                            [("LAHIRI", "Lahiri (Chitrapaksha)"), ("KP", "Krishnamurti (KP)")], e, info="ayanamsa")
+        return f"""{banner(message, candidates)}
+<form method="post" action="/baby-names" class="form nm-form no-print" data-live="/baby-names/part" novalidate>{ui_field(ui)}
+<fieldset><legend>{L("Birth details")}</legend>
+{birth_fields("", frm.birth, e, with_sex=False, with_name=False)}
+{ayan}
+</fieldset>
+{turnstile_widget(s)}
+<p class="submit-row"><button type="submit" class="primary nm-submit">{L("Find Letters")}</button><span class="private-note"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>{esc(T(ui, "form_private"))} <a href="/privacy">{esc(T(ui, "foot_privacy"))}</a></span></p>
+</form>"""
+    finally:
+        _FORM_LANG.reset(token)
+
+
+def _stamp_short(iso: str) -> str:
+    """2024-03-12T04:22 → 12-03-2024 04:22"""
+    d, _, tm = iso.partition("T")
+    return f"{_fmt_date(d)} {tm[:5]}"
+
+
+def naming_star(lang: str, frm: NamingForm, place_label: str, data: dict | None) -> str:
+    """Inner HTML of the birth-star card (a hint until the details are complete)."""
+    head = f'<h2>{esc(nt(lang, "star_h"))}</h2>'
+    if not data:
+        return head + f'<p class="hint nm-empty">{esc(nt(lang, "fill_hint"))}</p>'
+    b, star = frm.birth, data["birthStar"]
+    I = i18n.get(lang)
+    rows = [(esc(t(lang, "dob")), esc(_fmt_date(b.dob))), (esc(t(lang, "tob")), esc(_fmt_time(b.tob))),
+            (esc(t(lang, "pob")), esc(place_label)),
+            (esc(t(lang, "nakshatra")), esc(f'{I["nakshatra"][star["nakshatra"]]} — {t(lang, "pada")} {star["pada"]}')),
+            (esc(t(lang, "rasi")), esc(I["rashi"][star["rashi"]])),
+            (esc(t(lang, "col_lord")), esc(I["planet"].get(star["lord"], star["lord"]))),
+            (esc(t(lang, "ayanamsa")), esc(t(lang, frm.ayanamsa.value)))]
+    near = (f'<p class="nm-warn" role="note">{esc(nt(lang, "near", n=star["minutesToEdge"]))}</p>'
+            if star["nearBoundary"] else "")
+    window = esc(nt(lang, "window", start=_stamp_short(star["padaStart"]), end=_stamp_short(star["padaEnd"])))
+    return head + f'{_kv(rows)}<p class="small">{window}</p>{near}'
+
+
+def naming_cards(lang: str, frm: NamingForm, data: dict) -> str:
+    """Starting letters and the date-of-birth numbers, side by side."""
+    from ..core import naming as nm
+    from ..rules import v1 as R
+    star, nums = data["birthStar"], data["numbers"]
+    I = i18n.get(lang)
+    planet = I["planet"]
+    nak = star["nakshatraIndex"]
+    star_name = I["nakshatra"][star["nakshatra"]]
+    main_sc = nm.LANG_SCRIPT[lang]
+    second_sc = "dev" if main_sc == "latin" else "latin"
+
+    def chips(pada: int, big: bool) -> str:
+        out = []
+        for i, (a, c) in enumerate(zip(nm.syllables(nak, pada, main_sc), nm.syllables(nak, pada, second_sc))):
+            out.append(f'<span class="nm-chip{" var" if i else ""}" lang="{"en" if main_sc == "latin" else lang}">'
+                       f'<b>{esc(a)}</b><small>{esc(c)}</small></span>')
+        # Tamil can merge two variants into one letter: show any extra second-script variants too
+        extra = nm.syllables(nak, pada, second_sc)[len(out):]
+        out += [f'<span class="nm-chip var"><b>{esc(x)}</b></span>' for x in extra]
+        return f'<div class="nm-chips{" big" if big else ""}">{"".join(out)}</div>'
+
+    others = "".join(f'<li><span class="nm-pada">{esc(t(lang, "pada"))} {p}</span>{chips(p, False)}</li>'
+                     for p in (1, 2, 3, 4) if p != star["pada"])
+
+    def tile(key: str, hint_key: str | None, n: int, pl: str) -> str:
+        hint = f'<small>{esc(nt(lang, hint_key))}</small>' if hint_key else ""
+        return (f'<div class="nm-tile"><span class="nm-tile-k">{esc(nt(lang, key))}</span>{hint}'
+                f'<b class="nm-big">{n}</b><span class="nm-planet">{esc(planet.get(pl, pl))}</span></div>')
+    harmony = "".join(f'<span class="nm-h">{n}<small>{esc(planet.get(R.NUMBER_PLANET[n], ""))}</small></span>'
+                      for n in nums["harmony"])
+    tiles = (tile("birth_num", "birth_hint", nums["birth"], nums["birthPlanet"])
+             + tile("destiny_num", "destiny_hint", nums["destiny"], nums["destinyPlanet"])
+             + tile("lord_num", None, nums["nakshatraNumber"], nums["nakshatraLord"]))
+    to_h = carry_link("/horoscope", T(lang, "cta_h_btn"), frm.birth, frm.ayanamsa.value)
+    tools = (f'<div class="toolbar no-print nm-tools"><button type="button" class="primary" data-action="print">'
+             f'{esc(T(lang, "print"))}</button>{to_h}</div>')
+    return f"""{tools}<div class="nm-pair">
+<section class="nm-card"><h2>{esc(nt(lang, "letters_h"))}</h2>
+<p class="nm-for">{esc(nt(lang, "for_pada", p=star["pada"]))}</p>{chips(star["pada"], True)}
+<p class="nm-for">{esc(nt(lang, "other_padas", star=star_name))}</p><ul class="nm-others">{others}</ul>
+<p class="small">{esc(nt(lang, "variants"))}</p></section>
+<section class="nm-card"><h2>{esc(nt(lang, "nums_h"))}</h2><div class="nm-tiles">{tiles}</div>
+<p class="nm-for">{esc(nt(lang, "harmony"))}</p><div class="nm-harmony">{harmony}</div>
+<p class="small">{esc(nt(lang, "harmony_hint"))}</p></section>
+</div>"""
+
+
+_NM_LABELS = ("first_sound", "fs_PADA", "fs_STAR", "fs_NONE", "m_chaldean", "m_pyth", "m_pyramid", "total", "apex",
+              "master", "v_HARMONY", "v_NEUTRAL", "v_AVOID", "need_latin", "name_label", "name_ph", "remove")
+
+
+def naming_payload(lang: str, data: dict) -> dict:
+    """What naming.js needs to check names for this birth."""
+    from ..core import numerology as nu
+    from ..rules import v1 as R
+    star, nums = data["birthStar"], data["numbers"]
+    return {"chaldean": R.CHALDEAN, "pythagorean": R.PYTHAGOREAN, "masters": list(R.MASTER_NUMBERS),
+            "verdicts": {str(k): nu.verdict(k, nums["birth"], nums["destiny"]) for k in range(1, 10)},
+            "syllables": star["syllables"], "pada": star["pada"], "maxNames": 5}
+
+
+def naming_page(s: Settings, frm: NamingForm, ui: str = "en", data: dict | None = None, place_label: str = "",
+                message: str | None = None, candidates: list[dict] | None = None) -> str:
+    """The baby-names page, empty or filled in (data from ResolvedPerson.naming)."""
+    lang = site_lang(ui)
+    cards = naming_cards(lang, frm, data) if data else ""
+    boot = {"labels": {k: nt(lang, k) for k in _NM_LABELS}, "data": naming_payload(lang, data) if data else None}
+    js = json.dumps(boot, ensure_ascii=False).replace("</", "<\\/")
+    body = f"""<div class="naming-page">
+<h1>{esc(nt(lang, "h1"))}</h1>
+<p class="lead no-print">{esc(nt(lang, "lead"))}</p>
+<div class="nm-head">
+<div class="nm-form-col">{_naming_form_block(s, frm, lang, message, candidates)}</div>
+<section class="nm-card nm-star" id="nm-star" aria-live="polite">{naming_star(lang, frm, place_label, data)}</section>
+</div>
+<div id="nm-results" class="nm-results" aria-live="polite"{"" if data else " hidden"}>{cards}</div>
+<section class="nm-try" id="nm-try"{"" if data else " hidden"}><h2>{esc(nt(lang, "try_h"))}</h2><p>{esc(nt(lang, "try_lead"))}</p>
+<div id="nm-names" class="nm-names"><noscript><p class="hint">JavaScript is needed for the name checker.</p></noscript></div>
+<p><button type="button" id="nm-add" class="nm-add" hidden>+ {esc(nt(lang, "add"))}</button></p>
+<p class="small">{esc(nt(lang, "methods_note"))}</p>
+</section>
+{cta(lang, "/horoscope", frm.birth if data else None, frm.ayanamsa.value if data else "")}
+</div>
+<script type="application/json" id="naming-data">{js}</script>
+<script src="/static/naming.js?v={STATIC_VERSION}" defer></script>"""
+    if data:  # a filled-in page holds birth details: no index, no ads, generic title
+        return layout(s, nt(lang, "res_title"), body, active="names", map_page=True, turnstile=True, side_ad=False,
+                      ads=False, lang=lang)
+    m = meta(s, "names", lang)
+    return layout(s, T(lang, "nav_names"), body, active="names", map_page=True, turnstile=True, path="/baby-names",
+                  lang=lang, side_ad=False, **m,
+                  ld=[app_ld(s, lpath(lang, "/baby-names"), f"{s.site_name} baby name letters and numerology",
+                             m["description"])])
+
+
+def naming_form(s: Settings, frm: NamingForm, message: str | None = None, candidates: list[dict] | None = None,
+                ui: str = "en") -> str:
+    return naming_page(s, frm, ui, message=message, candidates=candidates)
+
+
+def naming_result(s: Settings, frm: NamingForm, place_label: str, data: dict, ui: str = "en") -> str:
+    return naming_page(s, frm, ui, data, place_label)
 
 
 # ------------------------------------------------------------------ Vimshottari dasha

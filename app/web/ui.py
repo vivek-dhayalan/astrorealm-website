@@ -11,7 +11,7 @@ import re
 SITE_LANGS = ("en", "ta", "hi", "te", "ml", "kn")
 BASE_LANGS = ("en", "ta", "hi")      # the tuples in this file hold these three, in this order
 LANG_LABEL = {"en": "English", "ta": "தமிழ்", "hi": "हिन्दी", "te": "తెలుగు", "ml": "മലയാളം", "kn": "ಕನ್ನಡ"}
-LOCALIZED = re.compile(r"^/(?:$|horoscope$|match$|dasha$|learn(?:/.*)?$|upcoming$|credits$|privacy$|terms$)")
+LOCALIZED = re.compile(r"^/(?:$|horoscope$|match$|dasha$|baby-names$|learn(?:/.*)?$|upcoming$|credits$|privacy$|terms$)")
 
 
 def prefix(lang: str) -> str:
@@ -208,6 +208,21 @@ _T: dict[str, tuple[str, str, str]] = {
                     "பிறப்பு முதல் எல்லாத் தசைக் காலங்களும் — மகா தசை முதல் பிராணம் வரை — தேதிகள், மீதமுள்ள காலம், "
                     "நடப்புக் காலத்துடன்.",
                     "जन्म से हर दशा अवधि — महादशा से प्राण तक — तिथियों, शेष समय और चालू अवधि के साथ।"),
+    "nav_names": ("Baby Names", "குழந்தைப் பெயர்", "शिशु नाम"),
+    "card_n": ("Baby Names & Numerology", "குழந்தைப் பெயர் & எண் கணிதம்", "शिशु नाम और अंक ज्योतिष"),
+    "card_n_desc": ("Starting letters from the birth star's pada, and Chaldean, Pythagorean and pyramid numbers for "
+                    "any name you type.",
+                    "பிறந்த நட்சத்திர பாதத்தின் முதல் எழுத்துகள்; நீங்கள் தட்டச்சு செய்யும் பெயருக்குக் கால்டியன், "
+                    "பைதாகரஸ், பிரமிடு எண்கள்.",
+                    "जन्म नक्षत्र चरण के आरंभिक अक्षर, और आपके लिखे हर नाम के कैल्डियन, पाइथागोरियन व पिरामिड अंक।"),
+    "cta_n_q": ("Choosing a name for the baby?", "குழந்தைக்குப் பெயர் தேடுகிறீர்களா?", "शिशु का नाम चुन रहे हैं?"),
+    "cta_n_text": ("See the starting letters for this birth star and check names with every numerology method. "
+                   "The details you entered come along.",
+                   "இந்த நட்சத்திரத்திற்கான முதல் எழுத்துகளைப் பார்த்து, பெயர்களை எல்லா எண் கணித முறைகளிலும் "
+                   "சோதியுங்கள். நீங்கள் உள்ளிட்ட விவரங்கள் அப்படியே எடுத்துச் செல்லப்படும்.",
+                   "इस नक्षत्र के आरंभिक अक्षर देखें और नामों को अंक ज्योतिष की हर विधि से जाँचें। आपके भरे विवरण साथ "
+                   "चले जाएँगे।"),
+    "cta_n_btn": ("Find Letters →", "எழுத்துகளைக் காண் →", "अक्षर देखें →"),
     "res_m": ("Matching result", "பொருத்த முடிவு", "मिलान परिणाम"),
     "print": ("Print", "அச்சிடு", "प्रिंट करें"),
     "edit": ("Edit Details", "விவரங்களைத் திருத்த", "विवरण बदलें"),
@@ -351,6 +366,17 @@ PAGE_META = {
         "ta": ("பயன்பாட்டு விதிமுறைகள் | {site}", "{site}-இன் இலவச ஜாதக, திருமணப் பொருத்தக் கருவிகளைப் "
                "பயன்படுத்துவதற்கான விதிமுறைகள்."),
         "hi": ("उपयोग की शर्तें | {site}", "{site} के मुफ़्त कुंडली और कुंडली मिलान टूल के उपयोग की शर्तें।"),
+    },
+    "names": {
+        "en": ("Baby Names by Nakshatra & Numerology – Starting Letters | {site}",
+               "Find the baby's starting letters from the birth star (nakshatra pada) and check names with Chaldean, "
+               "Pythagorean and pyramid numerology, matched to the birth and destiny numbers."),
+        "ta": ("நட்சத்திரப்படி குழந்தைப் பெயர் எழுத்துகள் & எண் கணிதம் | {site}",
+               "பிறந்த நட்சத்திர பாதத்திலிருந்து குழந்தைப் பெயரின் முதல் எழுத்துகள்; கால்டியன், பைதாகரஸ், பிரமிடு "
+               "எண் கணிதத்தில் பெயர்களைப் பிறவி, விதி எண்களுடன் சோதியுங்கள்."),
+        "hi": ("नक्षत्र अनुसार शिशु नाम अक्षर और अंक ज्योतिष | {site}",
+               "जन्म नक्षत्र चरण से शिशु नाम के आरंभिक अक्षर जानें, और नामों को कैल्डियन, पाइथागोरियन व पिरामिड अंक "
+               "ज्योतिष से मूलांक-भाग्यांक के साथ जाँचें।"),
     },
     "dasha": {
         "en": ("Vimshottari Dasha Calculator – Mahadasha, Bhukti, Antara | {site}",

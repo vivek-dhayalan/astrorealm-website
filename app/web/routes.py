@@ -17,11 +17,11 @@ from ..render import svg
 from ..service import ResolvedPerson
 from . import refpages, stars, views
 from .learn import ARTICLES
-from .forms import DashaForm, HoroscopeForm, MatchForm, parse_body
+from .forms import DashaForm, HoroscopeForm, MatchForm, NamingForm, parse_body
 from .security import RateLimiter, client_ip, verify_turnstile
 from .settings import get_settings
 from .strings import LANGS
-from .ui import SITE_LANGS, lpath, prefix
+from .ui import SITE_LANGS, localize_links, lpath, prefix
 
 router = APIRouter(include_in_schema=False)
 _limiter: RateLimiter | None = None
@@ -109,6 +109,7 @@ _localized("/", lambda lang, r: html(views.home(get_settings(), lang)))
 _localized("/horoscope", lambda lang, r: html(views.horoscope_form(
     get_settings(), HoroscopeForm(lang=_output_lang(lang, r)), ui=lang)))
 _localized("/dasha", lambda lang, r: html(views.dasha_form(get_settings(), DashaForm(), ui=lang)))
+_localized("/baby-names", lambda lang, r: html(views.naming_form(get_settings(), NamingForm(), ui=lang)))
 _localized("/match", lambda lang, r: html(views.match_form(
     get_settings(), MatchForm(lang=_output_lang(lang, r)), ui=lang)))
 _localized("/credits", lambda lang, r: html(views.credits(get_settings(), lang)))
@@ -214,6 +215,60 @@ async def dasha_submit(request: Request):
                 private=True)
 
 
+@router.post("/baby-names", response_class=HTMLResponse)
+async def naming_submit(request: Request):
+    s = get_settings()
+    try:
+        form = parse_body(await request.body())
+    except ValueError as exc:
+        return html(views.error_page(s, "Form too large", str(exc)), 413, private=True)
+    ui = _ui(form)
+    frm = NamingForm.parse(form)
+    blocked = await _guard(request, form)
+    if blocked:
+        return html(views.naming_form(s, frm, blocked, ui=ui), 429 if "Too many" in blocked else 400, private=True)
+    if frm.errors:
+        return html(views.naming_form(s, frm, "Please check the highlighted fields.", ui=ui), 422, private=True)
+    try:
+        rp = ResolvedPerson(frm.birth.to_person())
+        data = rp.naming(frm.ayanamsa)
+    except InputError as exc:
+        msg, cands = _input_error_message(exc)
+        frm.errors["place" if "PLACE" in exc.code else "dob"] = msg
+        return html(views.naming_form(s, frm, msg, cands, ui=ui), 422, private=True)
+    return html(views.naming_result(s, frm, _place_label(frm.birth, rp), data, ui=ui), private=True)
+
+
+@router.post("/baby-names/part")
+async def naming_part(request: Request):
+    """The filled-in parts of the baby-names page, fetched by naming.js as soon as the details are complete.
+    Like the place search it is rate-limited but has no bot check (it runs without a click)."""
+    s = get_settings()
+    ip = client_ip(request.headers, request.client.host if request.client else None, s.client_ip_header)
+    if not limiter().allow("names:" + ip):
+        return JSONResponse({"ok": False, "message": "Too many requests from your network. Please wait a minute and "
+                                                    "try again."}, 429, headers=NO_STORE)
+    try:
+        form = parse_body(await request.body())
+    except ValueError as exc:
+        return JSONResponse({"ok": False, "message": str(exc)}, 413, headers=NO_STORE)
+    ui = _ui(form)
+    frm = NamingForm.parse(form)
+    if frm.errors:
+        return JSONResponse({"ok": False, "errors": frm.errors}, 422, headers=NO_STORE)
+    try:
+        rp = ResolvedPerson(frm.birth.to_person())
+        data = rp.naming(frm.ayanamsa)
+    except InputError as exc:
+        msg, _ = _input_error_message(exc)
+        return JSONResponse({"ok": False, "message": views.ft(ui, msg)}, 422, headers=NO_STORE)
+    label = _place_label(frm.birth, rp)
+    loc = lambda h: localize_links(h, ui)  # noqa: E731 — links inside the parts follow the page language
+    return JSONResponse({"ok": True, "star": loc(views.naming_star(ui, frm, label, data)),
+                         "cards": loc(views.naming_cards(ui, frm, data)), "data": views.naming_payload(ui, data)},
+                        headers=NO_STORE)
+
+
 @router.post("/match", response_class=HTMLResponse)
 async def match_submit(request: Request):
     s = get_settings()
@@ -252,7 +307,7 @@ async def match_submit(request: Request):
 
 def site_paths() -> list[str]:
     """Language-neutral paths of every public page (the sitemap lists each in every language)."""
-    return (["/", "/horoscope", "/match", "/dasha", "/learn"] + [f"/learn/{a.slug}" for a in ARTICLES]
+    return (["/", "/horoscope", "/match", "/dasha", "/baby-names", "/learn"] + [f"/learn/{a.slug}" for a in ARTICLES]
             + refpages.sitemap_paths() + ["/upcoming", "/credits", "/privacy", "/terms"])
 
 

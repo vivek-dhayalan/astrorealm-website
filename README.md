@@ -181,7 +181,10 @@ POST /v1/match
   other convention.
 
 Other endpoints: `POST /v1/chart` (single person, including its Vimshottari `dasha`: balance at birth, current
-mahadasha/bhukti/antara with time left, and the mahadasha and current bhukti tables), `GET /v1/places?q=Salem` (place candidates) and
+mahadasha/bhukti/antara with time left, and the mahadasha and current bhukti tables), `POST /v1/naming` (baby naming:
+the Moon's nakshatra pada with its starting syllables in every script — variants included — the pada's start and end
+times, birth/destiny/harmony numbers, and Chaldean, Pythagorean and pyramid numbers for any `names` given),
+`GET /v1/places?q=Salem` (place candidates) and
 `POST /v1/chart/image` — an SVG with the South Indian Rasi and Navamsa charts plus KP planet/cusp tables:
 
 ```json

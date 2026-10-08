@@ -205,6 +205,23 @@ class DashaForm:
 
 
 @dataclass
+class NamingForm:
+    """Baby-names page: birth details only. The baby may not have a name yet, and sex plays no part in the letters
+    or numbers, so neither is asked (sex is fixed internally because the chart request needs one)."""
+    birth: BirthInput = field(default_factory=lambda: BirthInput(sex="F"))
+    ayanamsa: Ayanamsa = Ayanamsa.LAHIRI
+    errors: dict[str, str] = field(default_factory=dict)
+
+    @classmethod
+    def parse(cls, f: dict) -> "NamingForm":
+        b = _birth(f, sex="F")
+        b.name = ""
+        frm = cls(birth=b, ayanamsa=_ayanamsa(f))
+        frm.birth.validate("", frm.errors, require_name=False)
+        return frm
+
+
+@dataclass
 class MatchForm:
     bride: BirthInput = field(default_factory=lambda: BirthInput(sex="F"))
     groom: BirthInput = field(default_factory=lambda: BirthInput(sex="M"))

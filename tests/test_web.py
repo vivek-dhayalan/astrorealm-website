@@ -325,7 +325,7 @@ def test_same_home_layout_in_every_language():
     from app.web.ui import SITE_LANGS
     for lang in SITE_LANGS:
         h = views.home(s, lang)
-        assert (h.count('class="card"'), h.count("/learn/nakshatra/"), h.count("/learn/rasi/")) == (5, 27, 12), lang
+        assert (h.count('class="card"'), h.count("/learn/nakshatra/"), h.count("/learn/rasi/")) == (6, 27, 12), lang
 
 
 def test_result_page_follows_site_language():

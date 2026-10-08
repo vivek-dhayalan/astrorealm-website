@@ -19,7 +19,7 @@ from .core.ephemeris.base import DEFAULT_POSITION_MODE
 from .core.timeutil import InputError
 from .geo import get_resolver
 from .rules import v1 as rules
-from .schemas import ChartImageRequest, ChartRequest, MatchRequest
+from .schemas import ChartImageRequest, ChartRequest, MatchRequest, NamingRequest
 from .web.routes import router as web_router
 
 app = FastAPI(
@@ -63,6 +63,13 @@ def match(req: Annotated[MatchRequest, Body(openapi_examples=MATCH_EXAMPLES)]):
 @app.post("/v1/chart")
 def chart(req: Annotated[ChartRequest, Body(openapi_examples=CHART_EXAMPLES)]):
     return service.run_chart(req)
+
+
+@app.post("/v1/naming")
+def naming(req: NamingRequest):
+    """Baby naming: the Moon's nakshatra pada with its starting syllables (every script, variants included), the
+    birth, destiny and harmony numbers, and for each name the Chaldean, Pythagorean and pyramid numbers."""
+    return service.run_naming(req)
 
 
 @app.post("/v1/chart/image", response_class=Response,

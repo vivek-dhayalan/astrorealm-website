@@ -28,6 +28,7 @@ def fresh_limiter():
                                   "/learn/nakshatras", "/learn/rasis", "/learn/nakshatra-porutham-table",
                                   "/learn/nakshatra/rohini", "/learn/rasi/mesha", "/horoscope?lang=ta",
                                   "/learn/ayanamsa", "/learn/porutham", "/sitemap.xml", "/dasha", "/ta/dasha", "/kn/dasha",
+                                  "/baby-names", "/ta/baby-names", "/ml/baby-names", "/static/naming.js",
                                   "/static/site.css", "/static/site.js"])
 def test_pages_load(path):
     assert client.get(path).status_code == 200
@@ -38,6 +39,19 @@ def test_dasha_page_generates():
     assert r.status_code == 200 and r.headers["cache-control"] == "no-store"
     assert 'id="dasha-data"' in r.text and "Test Person" in r.text and "Krishnamurti (KP)" in r.text
     assert client.post("/dasha", data={**BIRTH, "dob": ""}).status_code == 422
+
+
+def test_baby_names_page_generates():
+    r = client.post("/baby-names", data={k: BIRTH[k] for k in ("dob", "tob", "place", "lat", "lon")})
+    assert r.status_code == 200 and r.headers["cache-control"] == "no-store"
+    assert 'id="naming-data"' in r.text and "/static/naming.js" in r.text
+    assert client.post("/baby-names", data={"dob": "", "tob": "06:10"}).status_code == 422
+    assert "/baby-names</loc>" in client.get("/sitemap.xml").text
+    # the live parts, fetched without a click as soon as the details are complete
+    j = client.post("/baby-names/part", data={k: BIRTH[k] for k in ("dob", "tob", "place", "lat", "lon")}).json()
+    assert j["ok"] and "nm-chip" in j["cards"] and j["data"]["pada"] in (1, 2, 3, 4) and "<h2>" in j["star"]
+    r = client.post("/baby-names/part", data={"dob": "2024-03-12", "tob": ""})
+    assert r.status_code == 422 and not r.json()["ok"] and r.headers["cache-control"] == "no-store"
 
 
 def test_horoscope_generates_and_is_not_cached():

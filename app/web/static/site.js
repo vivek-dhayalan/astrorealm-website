@@ -94,6 +94,7 @@
     latEl.value = lat === "" ? "" : Number(lat).toFixed(5);
     lonEl.value = lon === "" ? "" : Number(lon).toFixed(5);
     field.querySelector(".coords").textContent = latEl.value ? latEl.value + ", " + lonEl.value : "";
+    if (latEl.value) latEl.dispatchEvent(new Event("change", { bubbles: true }));  // a place was picked
   }
 
   function initPlace(field) {
@@ -268,7 +269,8 @@
     if (!raw) return;
     var d;
     try { d = JSON.parse(raw); } catch (err) { return; }
-    if (!d || d.action !== form.getAttribute("action") || Date.now() - d.at > 30 * 60 * 1000) return;
+    var bare = function (a) { return String(a || "").split("#")[0]; };  // "/baby-names#nm-results" → "/baby-names"
+    if (!d || bare(d.action) !== bare(form.getAttribute("action")) || Date.now() - d.at > 30 * 60 * 1000) return;
     if (d.kind === "back") {  // only when coming back to this form, not when opening it afresh
       var nav = performance.getEntriesByType && performance.getEntriesByType("navigation")[0];
       if (!nav || nav.type !== "back_forward") return;
@@ -294,6 +296,21 @@
       var lat = f.querySelector('input[name$="lat"]'), lon = f.querySelector('input[name$="lon"]'), c = f.querySelector(".coords");
       if (c && lat && lat.value) c.textContent = lat.value + ", " + lon.value;
     });
+    // "Find Letters →" from a result page: the details are complete, so go straight on to the result
+    // (after the bot check, when there is one, has finished)
+    // a page that fills itself in (data-live, e.g. baby names) only needs to hear that the fields changed
+    if (form.hasAttribute("data-live")) { form.dispatchEvent(new Event("change", { bubbles: true })); return; }
+    if (d.submit) {
+      var el = form.elements, ready = el.dob && el.dob.value && el.tob && el.tob.value &&
+        ((el.lat && el.lat.value) || (el.place && el.place.value));
+      if (!ready) return;
+      var tries = 0;
+      (function go() {
+        var ts = form.querySelector(".cf-turnstile"), tok = form.querySelector('[name="cf-turnstile-response"]');
+        if (ts && !(tok && tok.value) && tries++ < 60) { setTimeout(go, 250); return; }
+        if (form.requestSubmit) form.requestSubmit(); else form.submit();
+      })();
+    }
   })();
   // ---------------------------------------------------------------- take birth details to another form page
   // Links marked data-carry-to (horoscope ⇄ dasha) hand the details over the same way as a language switch:
@@ -312,7 +329,7 @@
     if (!fields.length) return;
     try {
       sessionStorage.setItem(DRAFT, JSON.stringify({ action: a.getAttribute("data-carry-to"), at: Date.now(),
-        fields: fields, rte: "", from: "" }));
+        fields: fields, rte: "", from: "", submit: a.hasAttribute("data-carry-submit") }));
     } catch (err) {}
   });
 

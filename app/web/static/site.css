@@ -418,3 +418,96 @@ a.button.primary { background: var(--accent); border-color: var(--accent); color
 
 .brand { display: inline-flex; align-items: center; gap: 8px; }
 .brand img { display: block; }
+
+/* ---------------- baby names: letters, numbers and the live name checker ---------------- */
+.naming-page h1 { margin-bottom: 12px; }
+.nm-top { display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 12px; margin-bottom: 18px; }
+.nm-card { padding: 12px 14px; background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius); min-width: 0; }
+.nm-card h2, .nm-try h2 { margin: 0 0 .5rem; font-size: 1.1rem; color: var(--accent); }
+.nm-card .kv { width: 100%; }
+.nm-for { margin: .6rem 0 .3rem; font-weight: 600; font-size: .92rem; }
+.nm-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.nm-chip { display: inline-flex; flex-direction: column; align-items: center; min-width: 2.6em; padding: 4px 8px;
+  border: 1px solid var(--line); border-radius: 6px; background: var(--head); line-height: 1.2; }
+.nm-chip b { font-size: 1.05rem; }
+.nm-chip small { font-size: .72rem; color: var(--muted); }
+.nm-chip.var { border-style: dashed; background: transparent; }
+.nm-chips.big .nm-chip { min-width: 3.4em; padding: 6px 12px; border-color: var(--accent); }
+.nm-chips.big .nm-chip b { font-size: 1.6rem; color: var(--accent); }
+.nm-chips.big .nm-chip.var b { font-size: 1.35rem; }
+.nm-others { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.nm-others li { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.nm-pada { font-size: .8rem; color: var(--muted); min-width: 4.5em; }
+.nm-warn { margin: .5rem 0 0; padding: 8px 10px; border-radius: 6px; background: var(--md-bg); color: var(--md-ink); font-size: .88rem; }
+.nm-tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.nm-tile { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 8px 4px;
+  border: 1px solid var(--line); border-radius: 6px; background: var(--head); }
+.nm-tile-k { font-size: .8rem; font-weight: 600; line-height: 1.25; }
+.nm-tile small { font-size: .7rem; color: var(--muted); }
+.nm-big { font-size: 1.9rem; line-height: 1.1; color: var(--accent); margin-top: auto; }
+.nm-planet { font-size: .78rem; color: var(--muted); }
+.nm-harmony { display: flex; flex-wrap: wrap; gap: 6px; }
+.nm-h { display: inline-flex; flex-direction: column; align-items: center; min-width: 2.6em; padding: 4px 8px;
+  border-radius: 6px; background: var(--ut-bg); color: var(--ut-ink); font-weight: 700; font-size: 1.2rem; line-height: 1.15; }
+.nm-h small { font-weight: 400; font-size: .68rem; }
+.nm-try { margin-bottom: 14px; }
+.nm-names { display: grid; gap: 12px; }
+.nm-row { padding: 12px 14px; background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius); }
+.nm-in { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.nm-in .label { font-weight: 600; min-width: 4.5em; }
+.nm-in input { flex: 1 1 220px; font: inherit; font-size: 1.15rem; padding: 8px 10px; border: 1px solid var(--line);
+  border-radius: 6px; background: var(--bg); color: var(--ink); min-width: 0; }
+.nm-in input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+.nm-fs { margin: .7rem 0 .4rem; }
+.nm-fs-label { font-weight: 600; }
+.badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: .88rem; }
+.fs-PADA { background: var(--ut-bg); color: var(--ut-ink); }
+.fs-STAR { background: var(--md-bg); color: var(--md-ink); }
+.fs-NONE { background: var(--rj-bg); color: var(--rj-ink); }
+.nm-methods { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 10px; }
+.nm-m { border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; min-width: 0; display: flex; flex-direction: column; }
+.nm-m .nm-res { margin-top: auto; padding-top: .5rem; }
+.nm-m h3 { margin: 0 0 .4rem; font-size: .95rem; }
+.nm-letters { display: flex; flex-wrap: wrap; gap: 3px; }
+.nm-l { display: inline-flex; flex-direction: column; align-items: center; min-width: 1.6em; padding: 1px 2px;
+  border-radius: 4px; background: var(--head); line-height: 1.15; }
+.nm-l b { font-size: .9rem; } .nm-l i { font-style: normal; font-size: .8rem; color: var(--accent); }
+.nm-res { margin: .5rem 0 0; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.nm-num { font-size: 1.4rem; color: var(--accent); }
+.nm-tag { font-size: .75rem; color: var(--muted); }
+.verdict { margin-left: auto; padding: 2px 8px; border-radius: 999px; font-size: .82rem; white-space: nowrap; }
+.v-HARMONY { background: var(--ut-bg); color: var(--ut-ink); }
+.v-NEUTRAL { background: var(--head); color: var(--muted); border: 1px solid var(--line); }
+.v-AVOID { background: var(--rj-bg); color: var(--rj-ink); }
+.nm-pyr { overflow-x: auto; font-variant-numeric: tabular-nums; font-size: .82rem; line-height: 1.35; text-align: center; }
+.nm-pyr div { white-space: nowrap; }
+.nm-pyr span { display: inline-block; width: 1.25em; }
+.nm-pyr .nm-apex span { font-weight: 700; color: var(--accent); font-size: 1rem; }
+.nm-remove[hidden], .nm-add[hidden] { display: none; }
+@media (max-width: 520px) {
+  .nm-tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .nm-big { font-size: 1.6rem; }
+}
+@media print {
+  .nm-add, .nm-remove { display: none !important; }
+  .nm-card, .nm-row { break-inside: avoid; }
+}
+.nm-results { margin-top: 22px; padding-top: 16px; border-top: 1px solid var(--line); scroll-margin-top: 8px; }
+/* baby names: form and birth star side by side, letters and numbers below */
+.nm-head { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+.nm-form-col .form { max-width: none; margin: 0; }
+.nm-form-col fieldset { margin: 0; }
+.nm-form-col .submit-row { margin-bottom: 0; }
+.nm-star { align-self: stretch; transition: opacity .15s; }
+.nm-star.nm-busy { opacity: .55; }
+.nm-empty { font-size: .95rem; }
+.nm-error { margin: .6rem 0 0; }
+.nm-pair { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
+.nm-results { margin-top: 18px; padding-top: 0; border-top: 0; }
+.nm-results .nm-tools { margin: 0 0 12px; }
+.nm-try { margin-top: 18px; }
+@media (max-width: 860px) {
+  .nm-head, .nm-pair { grid-template-columns: 1fr; }
+}
+.nm-live .nm-submit { display: none; }   /* with JavaScript the page fills itself in; the button is the no-JS fallback */
+.naming-page > .xcta { margin-top: 18px; }

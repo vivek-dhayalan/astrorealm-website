@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from enum import Enum
+from typing import Annotated
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -79,6 +80,16 @@ class ChartRequest(BaseModel):
     positions: PositionMode | None = Field(
         None, description="TRUE = true geometric planet positions (AstroWonder); APPARENT = as seen from Earth "
                           "(Swiss Ephemeris default). Defaults to the server setting (TRUE).")
+
+
+class NamingRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    person: PersonIn
+    ayanamsa: Ayanamsa = Ayanamsa.LAHIRI
+    names: list[Annotated[str, Field(max_length=60)]] = Field(
+        default_factory=list, max_length=10,
+        description="Candidate names to check (English spelling for the numbers). Not stored.")
 
 
 class Language(str, Enum):

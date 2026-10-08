@@ -3,12 +3,13 @@ from __future__ import annotations
 
 from .core.ayanamsa import Ayanamsa
 from .core import dasha as _dasha
+from .core import naming as _naming, numerology as _numerology
 from .core.chart import Chart, build_chart
 from .core.ephemeris.base import PositionMode
 from .core.timeutil import InputError, parse_date, parse_time, to_utc
 from .geo import get_resolver
 from .matching import REGISTRY, Method
-from .schemas import ChartImageRequest, ChartRequest, ImagePart, MatchRequest, PersonIn, Sex
+from .schemas import ChartImageRequest, ChartRequest, ImagePart, MatchRequest, NamingRequest, PersonIn, Sex
 
 
 class ResolvedPerson:
@@ -45,6 +46,26 @@ class ResolvedPerson:
         """Vimshottari dasha from the Moon in this chart; dates in the birth place's local time."""
         offset = self.time.local - self.time.utc.replace(tzinfo=None)
         return _dasha.compute(self.chart(model).moon.longitude, self.time.utc, offset, as_of)
+
+    def moon_speed(self, model: Ayanamsa) -> float:
+        """Moon's motion in degrees per day at birth (from positions 6 hours either side)."""
+        from .core.ephemeris import get_engine
+        from .core.ephemeris.base import DEFAULT_POSITION_MODE
+        eng, jd = get_engine(), self.time.jd_ut
+        mode = self.positions or DEFAULT_POSITION_MODE
+        a, b = eng.positions(jd - 0.25, model, mode)["Moon"], eng.positions(jd + 0.25, model, mode)["Moon"]
+        return ((b - a) % 360) / 0.5
+
+    def naming(self, model: Ayanamsa, names: list[str] | None = None) -> dict:
+        """Birth star and pada with starting syllables, date-of-birth numbers, and an analysis of each name given."""
+        star = _naming.birth_star(self.chart(model).moon.longitude, self.moon_speed(model), self.time.local)
+        nums = _numerology.numbers_for(self.time.local.date(), star["lord"])
+        out = {"birthStar": star, "numbers": nums}
+        if names:
+            out["names"] = [{**_numerology.analyse(n, nums["birth"], nums["destiny"]),
+                             "firstSound": _naming.first_sound(n, star["nakshatraIndex"], star["pada"])}
+                            for n in names if n and n.strip()]
+        return out
 
     def summary(self, model: Ayanamsa) -> dict:
         c = self.chart(model).to_dict()
@@ -87,6 +108,11 @@ def run_match(req: MatchRequest) -> dict:
 def run_chart(req: ChartRequest) -> dict:
     p = ResolvedPerson(req.person, req.positions)
     return {**p.summary(req.ayanamsa), "dasha": p.dasha(req.ayanamsa)}
+
+
+def run_naming(req: NamingRequest) -> dict:
+    p = ResolvedPerson(req.person)
+    return {"ayanamsa": req.ayanamsa.value, **p.naming(req.ayanamsa, req.names), "warnings": p.warnings}
 
 
 def search_places(q: str, limit: int = 5) -> list[dict]:

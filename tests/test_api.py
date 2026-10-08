@@ -71,6 +71,18 @@ def test_swagger_placeholder_offset_is_ignored():
     assert r.status_code == 200 and r.json()["birth"]["utcOffset"] == "+05:30"
 
 
+def test_naming_endpoint():
+    r = client.post("/v1/naming", json={"person": {"dob": "2024-03-12", "tob": "06:42", "sex": "F", "lat": 10.8,
+                                                   "lon": 78.69, "utcOffset": "+05:30"},
+                                        "names": ["Charan", "Devika"]})
+    assert r.status_code == 200
+    body = r.json()
+    assert body["birthStar"]["nakshatra"] == "Revati" and body["numbers"]["birth"] == 3
+    assert body["names"][0]["chaldean"]["total"] == 17
+    # Revati pada 2 is "Do"; Devika starts with "De", pada 1 of the same star
+    assert body["names"][1]["firstSound"] == {"result": "STAR", "pada": 1, "syllable": "De", "script": "latin"}
+
+
 def test_chart_image_endpoint():
     r = client.post("/v1/chart/image", json={"person": BOY, "lang": "ta"})
     assert r.status_code == 200 and r.headers["content-type"].startswith("image/svg+xml")
